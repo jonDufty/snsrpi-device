@@ -4,7 +4,7 @@ using System.Collections;
 using Sensr.CX;
 using Sensr.Utils;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
 
 	public class VibrationData
@@ -53,8 +53,8 @@ namespace snsrpi
 		{
 			time.Add(_time.ToString("MM/dd/yyyy HH:mm:ss.ffffff"));
 			accel_x.Add(_x);
-			accel_x.Add(_x);
-			accel_x.Add(_x);
+			accel_x.Add(_y);
+			accel_x.Add(_z);
 		}
 
 	}

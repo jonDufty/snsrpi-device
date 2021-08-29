@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Sensr.CX;
 using Sensr.Utils;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
 	public class Logger
 	{
@@ -17,6 +17,8 @@ namespace snsrpi
 		public CXDevice device { get; }
 		public OutputData output { get; set; }
 		public Queue<VibrationData> DataBuffers { get; }
+
+		public AcqusitionSettings Settings {get; set;}
 
 		public Logger(CXCom _cx, CXDevice _device) 
 		{
@@ -98,7 +100,7 @@ namespace snsrpi
 			}
 
 			//Create stopwatch timer for now
-			Stopwatch timer = new Stopwatch();
+			Stopwatch timer = new();
 			timer.Start();
 			var timestamps = new List<string>();
 			var accel_x = new List<double>();
@@ -128,6 +130,10 @@ namespace snsrpi
 			}
 		}
 
+		public void StopAcquisition()
+		{
+			
+		}
 		public void WriteSamples()
 		{
 			while (DataBuffers.Count > 0)

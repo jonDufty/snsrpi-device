@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Sensr.CX;
 using Sensr.Utils;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
     public class APIWrapper
     {

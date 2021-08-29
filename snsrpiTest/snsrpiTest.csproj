@@ -15,6 +15,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\snsrpi-device\snsrpi-device.csproj" />
+    <Reference Include="CXCom">
+      <HintPath>..\snsrpi-device\CXLib\CXCom.dll</HintPath>
+    </Reference>
+    <Reference Include="CXUtils">
+      <HintPath>..\snsrpi-device\CXLib\CXUtils.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

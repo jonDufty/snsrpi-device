@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FeatherDotNet;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
     public abstract class OutputData
     {
