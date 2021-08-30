@@ -18,6 +18,19 @@ namespace snsrpi.Models
         private FileUploadSettings File_Upload {get;}
         private SaveIntervalSettings Save_Interval {get;}
 
+        public AcqusitionSettings(int sample, string outputType, string Directory)
+        {
+            Sample_Rate = sample;
+            Output_Type = outputType;
+            Offline_Mode = false;
+            Output_Directory = Directory;
+            File_Upload = new(true, "aws.endpoint.arup");
+            Save_Interval = new("minute", 5);
+        }
+        public AcqusitionSettings(bool demo){
+
+        }
+
     }
 
     public class SaveIntervalSettings

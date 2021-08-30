@@ -13,32 +13,43 @@ namespace snsrpi.Models
 {
 	public class Logger
 	{
-		public CXCom cx { get; }
-		public CXDevice device { get; }
-		public OutputData output { get; set; }
+		public Thread Thread {get;}
+		public CXCom Cx { get; }
+		public CXDevice Device { get; }
+		public OutputData Output { get; set; }
 		public Queue<VibrationData> DataBuffers { get; }
 
 		public AcqusitionSettings Settings {get; set;}
 
 		public Logger(CXCom _cx, CXDevice _device) 
 		{
-			cx = _cx;
-			device = _device;
-			output = new CSVOutput("./", "CX1_");
+			Cx = _cx;
+			Device = _device;
+			Output = new CSVOutput("./", "CX1_");
 			DataBuffers = new Queue<VibrationData>();
+		}
+
+		public Logger(bool demo)
+		{
+			Cx = new();
+			Device = null;
+			Output = new FeatherOutput();
+			DataBuffers = new();
+			Settings = new AcqusitionSettings(500, "feather", "~/data");
+
 		}
 
 		public Logger(CXCom _cx, CXDevice _device, InputData input)
 		{
-			cx = _cx;
-			device = _device;
+			Cx = _cx;
+			Device = _device;
 			switch (input.outputType)
 			{
 				case "csv":
-					output = new CSVOutput(input.outputDirectory, "CX1_");
+					Output = new CSVOutput(input.outputDirectory, "CX1_");
 					break;
 				case "feather":
-					output = new FeatherOutput();
+					Output = new FeatherOutput();
 					break;
 				default:
 					new CSVOutput(input.outputDirectory, "CX1_");
@@ -51,8 +62,8 @@ namespace snsrpi.Models
 		{
 			try
 			{
-				cx.Connect(device);
-				CXCom.LoginStatus login = cx.Login(CXCom.LoginUserID.Admin, "admin");
+				Cx.Connect(Device);
+				CXCom.LoginStatus login = Cx.Login(CXCom.LoginUserID.Admin, "admin");
 				if (login != CXCom.LoginStatus.Ok)
 				{
 					Console.WriteLine("Could not log into device: {0}", login);
@@ -69,9 +80,9 @@ namespace snsrpi.Models
 
 		public void Disconnect()
 		{
-			if (cx.IsConnected())
+			if (Cx.IsConnected())
 			{
-				cx.Disconnect();
+				Cx.Disconnect();
 			}
 			else
 			{
@@ -83,7 +94,7 @@ namespace snsrpi.Models
 		{
 			int timeLimit = 100;
 
-			if (!cx.IsConnected())
+			if (!Cx.IsConnected())
 			{
 				Console.WriteLine("No Device is connected. Attempting reconnect");
 				var result = Connect();
@@ -93,7 +104,7 @@ namespace snsrpi.Models
 				}
 			}
 
-			if (!cx.StreamEnable())
+			if (!Cx.StreamEnable())
 			{
 				Console.WriteLine("Could not enable streaming");
 				return;
@@ -111,7 +122,7 @@ namespace snsrpi.Models
 			while (timer.Elapsed.TotalSeconds < timeLimit)
 			{
 				
-				List<CXCom.Sample> samples = cx.GetSamples();
+				List<CXCom.Sample> samples = Cx.GetSamples();
 				foreach (var s in samples)
 				{
 					//buffer.AppendSample(s.TimeStamp, s.Acceleration_X, s.Acceleration_Y, s.Acceleration_Z);
@@ -132,13 +143,13 @@ namespace snsrpi.Models
 
 		public void StopAcquisition()
 		{
-			
+
 		}
 		public void WriteSamples()
 		{
 			while (DataBuffers.Count > 0)
 			{
-				output.Write(DataBuffers.Dequeue());
+				Output.Write(DataBuffers.Dequeue());
 				Thread.Sleep(20);
 
 			}

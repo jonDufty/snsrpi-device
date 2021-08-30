@@ -11,7 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using snsrpi;
+using snsrpi.Services;
+using snsrpi.Interfaces;
 
 namespace snsrpi
 {
@@ -29,6 +30,7 @@ namespace snsrpi
         {
 
             services.AddControllers();
+            services.AddSingleton<ILoggerManager>(new LoggerManagerService(true));
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "testaspnet", Version = "v1" });

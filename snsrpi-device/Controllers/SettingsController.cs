@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using snsrpi.Models;
 using snsrpi.Services;
+using snsrpi.Interfaces;
 
 
 namespace snsrpi.Controllers
@@ -15,18 +16,27 @@ namespace snsrpi.Controllers
     public class SettingsController : ControllerBase
     {
         
-        private readonly LoggerService LoggerManager;
-        public SettingsController(LoggerService _logger)
+        private readonly ILogger<SettingsController> _logger;
+        private readonly ILoggerManager _loggerManager;
+
+        public SettingsController(ILogger<SettingsController> logger, ILoggerManager loggerManager)
         {
-            LoggerManager = _logger;
+            _logger = logger;
+            _loggerManager = loggerManager;
+        }
+
+        [HttpGet]
+        public ActionResult Normal()
+        {
+            return Ok();
         }
 
         [HttpGet("{id}")]
         public ActionResult<AcqusitionSettings> GetSettings(string id)
         {
-            if (!LoggerManager.CheckDevice(id)) return NotFound();
+            if (!_loggerManager.CheckDevice(id)) return NotFound();
 
-            var settings = LoggerManager.GetDevice(id).Settings;
+            var settings = _loggerManager.GetDevice(id).Settings;
 
             return settings;
         }
@@ -34,9 +44,9 @@ namespace snsrpi.Controllers
         [HttpPost("{id}")]
         public IActionResult UpdateSettings(string id, AcqusitionSettings settings)
         {
-            if (!LoggerManager.CheckDevice(id)) return NotFound();
+            if (!_loggerManager.CheckDevice(id)) return NotFound();
 
-            var device = LoggerManager.GetDevice(id);
+            var device = _loggerManager.GetDevice(id);
             device.Settings = settings;
 
             return NoContent();

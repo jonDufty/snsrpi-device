@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using snsrpi.Models;
 using snsrpi.Services;
+using snsrpi.Interfaces;
 
 
 namespace snsrpi.Controllers
@@ -14,17 +15,19 @@ namespace snsrpi.Controllers
     [Route("api/[controller]")]
     public class DevicesController : ControllerBase
     {
-        private LoggerService LoggerManager {get;}
+        private readonly ILogger<DevicesController> _logger;
+        private readonly ILoggerManager _loggerManager;
 
-        public DevicesController(LoggerService loggerManager)
+        public DevicesController(ILogger<DevicesController> logger, ILoggerManager loggerManager)
         {
-            LoggerManager = loggerManager;
+            _logger = logger;
+            _loggerManager = loggerManager;
         }
 
         [HttpPost("{id}/start")]
         public IActionResult Start(string id)
         {
-            if (LoggerManager.CheckDevice(id)) return NotFound();
+            if (_loggerManager.CheckDevice(id)) return NotFound();
             // var result = LoggerManager.StartDevice(id);
             return NoContent();
         }
@@ -32,9 +35,16 @@ namespace snsrpi.Controllers
         [HttpPost("{id}/stop")]
         public IActionResult Stop(string id)
         {
-            if (LoggerManager.CheckDevice(id)) return NotFound();
+            if (_loggerManager.CheckDevice(id)) return NotFound();
             // var result = LoggerManager.StopDevice(id);
             return NoContent();
+        }
+
+        [HttpGet]
+        public IEnumerable<string> List()
+        {
+            var devices = _loggerManager.ListDevices();
+            return devices;
         }
     }
 }
