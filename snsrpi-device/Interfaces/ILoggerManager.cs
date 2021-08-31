@@ -17,6 +17,8 @@ namespace snsrpi.Interfaces
         bool CheckDevice(string id);
         void StartDevice(string id);
         void StopDevice(string id);
+
+        void StopAllDevices();
         void SendHeartbeat();
 
     }

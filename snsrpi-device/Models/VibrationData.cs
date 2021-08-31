@@ -19,7 +19,7 @@ namespace snsrpi.Models
 		// Constructor class takes in list of samples and populates data fields
 		public VibrationData()
 		{
-			time = new List<string>();
+			time 	= new List<string>();
 			accel_x = new List<double>();
 			accel_y = new List<double>();
 			accel_z = new List<double>();

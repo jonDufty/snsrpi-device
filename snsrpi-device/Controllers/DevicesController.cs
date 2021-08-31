@@ -25,19 +25,20 @@ namespace snsrpi.Controllers
         }
 
         [HttpPost("{id}/start")]
-        public IActionResult Start(string id)
+        public IActionResult Post(string id)
         {
-            if (_loggerManager.CheckDevice(id)) return NotFound();
-            // var result = LoggerManager.StartDevice(id);
-            return NoContent();
+            if (!_loggerManager.CheckDevice(id)) return NotFound();
+            _logger.LogInformation("Device found...");
+            _loggerManager.StartDevice(id);
+            return Ok($"Device {id} has started");
         }
 
         [HttpPost("{id}/stop")]
         public IActionResult Stop(string id)
         {
-            if (_loggerManager.CheckDevice(id)) return NotFound();
-            // var result = LoggerManager.StopDevice(id);
-            return NoContent();
+            if (!_loggerManager.CheckDevice(id)) return NotFound();
+             _loggerManager.StopDevice(id);
+            return Ok("All devices stopped");
         }
 
         [HttpGet]

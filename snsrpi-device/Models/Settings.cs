@@ -11,12 +11,12 @@ namespace snsrpi.Models
 {
     public class AcqusitionSettings
     {
-        private int Sample_Rate {get; set;}
-        private string Output_Type {get; set;}
-        private bool Offline_Mode {get;}
-        private string Output_Directory {get; set;}
-        private FileUploadSettings File_Upload {get;}
-        private SaveIntervalSettings Save_Interval {get;}
+        public int Sample_Rate {get; set;}
+        public string Output_Type {get; set;}
+        public bool Offline_Mode {get;}
+        public string Output_Directory {get; set;}
+        public FileUploadSettings File_Upload {get;}
+        public SaveIntervalSettings Save_Interval {get;}
 
         public AcqusitionSettings(int sample, string outputType, string Directory)
         {

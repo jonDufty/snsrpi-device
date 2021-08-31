@@ -15,6 +15,8 @@ namespace snsrpi.Services
     public class LoggerManagerService : ILoggerManager
     {
         private Dictionary<string,Logger> Loggers {get;}
+        private Dictionary<string,CancellationTokenSource> LoggerTokens {get; set;}
+        public CancellationTokenSource GlobalSource;
 
         private CXCom CX {get;}
 
@@ -33,11 +35,22 @@ namespace snsrpi.Services
             }
             CX = new();
 
+            Console.WriteLine("Creating cancellation token");
+            GlobalSource = new();
+            var token = GlobalSource.Token;
+
+            LoggerTokens = new(){
+                {"CX1_1901", new CancellationTokenSource()},
+                {"CX1_1902", new CancellationTokenSource()},
+                {"CX1_1903", new CancellationTokenSource()},
+                {"CX1_1904", new CancellationTokenSource()},
+            };
+
             Loggers = new(){
-                {"CX1_1901", new Logger(true)},
-                {"CX1_1902", new Logger(true)},
-                {"CX1_1903", new Logger(true)},
-                {"CX1_1904", new Logger(true)},
+                {"CX1_1901", new Logger(true,"CX1_1901_", LoggerTokens["CX1_1901"].Token)},
+                {"CX1_1902", new Logger(true,"CX1_1902_", LoggerTokens["CX1_1902"].Token)},
+                {"CX1_1903", new Logger(true,"CX1_1903_", LoggerTokens["CX1_1903"].Token)},
+                {"CX1_1904", new Logger(true,"CX1_1904_", LoggerTokens["CX1_1904"].Token)},
             };
 
             Console.WriteLine("Bootstrapping system...");
@@ -61,13 +74,27 @@ namespace snsrpi.Services
         public void StartDevice(string deviceID)
         {
             var device = Loggers[deviceID];
-            device.StartAcquisition();
+            Console.WriteLine($"Starting device {deviceID}");
+            // Create new token
+
+            device.SetNewDeviceThread();
+            var cst = new CancellationTokenSource();
+            LoggerTokens[deviceID] = cst;
+            device.TokenDeviceThread = cst.Token;            
+            device.DeviceThread.Start();
             return;
+        }
+
+        public void StopAllDevices()
+        {
+            Console.WriteLine("Calling cancel requests");
+            GlobalSource.Cancel();
         }
 
         public void StopDevice(string deviceID)
         {
-            Loggers[deviceID].StopAcquisition();
+            Console.WriteLine($"Cancelling device {deviceID}");
+            LoggerTokens[deviceID].Cancel();
             return;
         }
 

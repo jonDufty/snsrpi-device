@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -13,12 +14,13 @@ namespace snsrpi.Models
 {
 	public class Logger
 	{
-		public Thread Thread {get;}
+		public Thread DeviceThread {get; set;}
+		public Thread FileThread {get; set;}
 		public CXCom Cx { get; }
 		public CXDevice Device { get; }
 		public OutputData Output { get; set; }
-		public Queue<VibrationData> DataBuffers { get; }
-
+		public ConcurrentQueue<VibrationData> DataBuffers { get; }
+		public CancellationToken TokenDeviceThread {get; set;}
 		public AcqusitionSettings Settings {get; set;}
 
 		public Logger(CXCom _cx, CXDevice _device) 
@@ -26,16 +28,23 @@ namespace snsrpi.Models
 			Cx = _cx;
 			Device = _device;
 			Output = new CSVOutput("./", "CX1_");
-			DataBuffers = new Queue<VibrationData>();
+			DataBuffers = new();
+			Settings = new AcqusitionSettings(500, "feather", "/home/jondufty/data");
+			DeviceThread = new(new ThreadStart(Start));
+			FileThread = new(new ParameterizedThreadStart(WriteFiles));
 		}
 
-		public Logger(bool demo)
+		public Logger(bool demo, string prefix, CancellationToken token)
 		{
 			Cx = new();
 			Device = null;
-			Output = new FeatherOutput();
+			Settings = new AcqusitionSettings(500, "csv", "/home/jondufty/data");
+			Output = new CSVOutput(Settings.Output_Directory,prefix);
 			DataBuffers = new();
-			Settings = new AcqusitionSettings(500, "feather", "~/data");
+			// DeviceThread = new(new ThreadStart(Start));
+			// FileThread = new(WriteFiles);
+			TokenDeviceThread = token;
+			Console.WriteLine(token);
 
 		}
 
@@ -52,10 +61,15 @@ namespace snsrpi.Models
 					Output = new FeatherOutput();
 					break;
 				default:
-					new CSVOutput(input.outputDirectory, "CX1_");
+					Output = new CSVOutput(input.outputDirectory, "CX1_");
 					break;
 			}
-			DataBuffers = new Queue<VibrationData>();
+			DataBuffers = new ();
+		}
+
+		public void SetNewDeviceThread()
+		{
+			DeviceThread = new(new ThreadStart(Start));
 		}
 
 		public bool Connect()
@@ -90,6 +104,60 @@ namespace snsrpi.Models
 			}
 		}
 
+		public void Start()
+		{
+			Console.WriteLine("Starting demo Acqusition...");
+			Run();
+		}
+
+		public void Run()
+		{
+			
+
+			Console.WriteLine("Creating File Writing Thread");
+			CancellationTokenSource source = new();
+			FileThread = new(WriteFiles);
+			FileThread.Start(source.Token);
+			
+			var dt = 0.01;
+			var t = 0;
+			double _t;
+			int sampleSize = 100;
+			int[] sample = Enumerable.Range(0,sampleSize).ToArray();
+			List<string> timestamps;
+			List<double> accel_x;
+			List<double> accel_y;
+			List<double> accel_z;
+
+			while(!TokenDeviceThread.IsCancellationRequested)
+			{
+				timestamps = new();
+				accel_x = new();
+				accel_y = new();
+				accel_z = new();
+
+				foreach(int s in sample)
+				{
+					_t = t + s*dt;
+					timestamps.Add(_t.ToString());
+					accel_x.Add(Math.Sin(_t));
+					accel_y.Add(Math.Cos(_t));
+					accel_z.Add(5*Math.Sin(_t));
+				}
+
+				Thread.Sleep(1000);
+				t ++;
+				Console.WriteLine($"Adding sample to queue. Token = {TokenDeviceThread.IsCancellationRequested}, IsCancellable = {TokenDeviceThread.CanBeCanceled}");
+				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
+
+			}
+
+			Console.WriteLine("Cancellation Request received. Sending file thread cancel");
+			source.Cancel();
+
+			// Console.
+
+		}
 		public void StartAcquisition()
 		{
 			int timeLimit = 100;
@@ -134,7 +202,7 @@ namespace snsrpi.Models
 						accel_z.Add(s.Acceleration_Z);
 					}
 				}
-				Thread.Sleep(20);
+				Thread.Sleep(1000);
 				//break;
 
 				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
@@ -145,16 +213,20 @@ namespace snsrpi.Models
 		{
 
 		}
-		public void WriteSamples()
-		{
-			while (DataBuffers.Count > 0)
+
+		public void WriteFiles(Object obj){
+			var token = (CancellationToken)obj;
+			VibrationData data;
+            while (!token.IsCancellationRequested)
 			{
-				Output.Write(DataBuffers.Dequeue());
-				Thread.Sleep(20);
-
+				if(DataBuffers.TryDequeue(out data))
+				{
+					//Write the files...
+					Console.Write("Writing files...");	
+					Output.Write(data);
+				}
 			}
-
-			return;
+			Console.WriteLine("Cancellation request received: Stopping file writes");
 		}
 
 	}

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -33,7 +34,10 @@ namespace snsrpi
         public static LoggerManagerService InitDataAcquisition() 
         {
             var manager = new LoggerManagerService(true);
-            
+            manager.StartDevice(manager.ListDevices()[0]);
+            Thread.Sleep(5000);
+            manager.StopAllDevices();
+
             return manager;
 
         }

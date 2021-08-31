@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FeatherDotNet;
+using CsvHelper;
+using CsvHelper.Configuration;
 
 namespace snsrpi.Models
 {
@@ -25,21 +28,29 @@ namespace snsrpi.Models
         
         public override bool Write(VibrationData data)
         {
-            var csv = new StringBuilder();
-            for (int i = 0; i < data.time.Count; i++)
-            {
-                var newline = $"{data.time[i]},{data.accel_x[i]},{data.accel_y[i]},{data.accel_z[i]}";
-                csv.AppendLine(newline);
-            }
             var filepath = Path.Combine(outputDir, GetFileName(data));
-            File.WriteAllText(filepath, csv.ToString());
+            using(var writer = new StreamWriter(filepath))
+            using(var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            {
+                var records = new List<object>();
+                
+                for(int i=0; i<data.accel_x.Count; i++)
+                {
+                    i++;
+                    records.Add(new {time=data.time[i], x = data.accel_x[i], y=data.accel_y[i], z=data.accel_z[i]});                    
+                }
+                csv.WriteRecords(records);
+            }
+            
+            
             return true;
         }
 
         public string GetFileName(VibrationData data)
         {
-            DateTime timestamp = DateTime.Parse(data.time[0].ToString());
-            return outputPrefix + timestamp.ToString("yyyy_MM_dd_hh_mm") + ".csv";
+            return outputPrefix + data.time[0].ToString() + ".csv";
+            // DateTime timestamp = DateTime.Parse(data.time[0].ToString());
+            // return outputPrefix + timestamp.ToString("yyyy_MM_dd_hh_mm") + ".csv";
 
         }
     }
