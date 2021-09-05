@@ -33,7 +33,7 @@ namespace snsrpi.Models
 			Device = _device;
 			Output = new CSVOutput("./", "CX1_");
 			DataBuffers = new();
-			Settings = new AcqusitionSettings(500, "feather", "/home/jondufty/data");
+			Settings =  AcqusitionSettings.Create(500, "csv", "/home/jondufty/data");
 			DeviceThread = new(new ThreadStart(Start));
 			FileThread = new(new ParameterizedThreadStart(WriteFiles));
 		}
@@ -42,8 +42,8 @@ namespace snsrpi.Models
 		{
 			Cx = new();
 			Device = null;
-			Settings = new AcqusitionSettings(500, "csv", "/home/jondufty/data");
-			Output = new CSVOutput(Settings.Output_Directory,prefix);
+			Settings = AcqusitionSettings.Create(500, "csv", "/home/jondufty/data");
+			Output = new CSVOutput(Settings.Output_directory, prefix);
 			DataBuffers = new();
 			// DeviceThread = null;
 			// FileThread = null;
@@ -125,7 +125,7 @@ namespace snsrpi.Models
 			var dt = 0.01;
 			var t = 0;
 			double _t;
-			int sampleSize = 100;
+			int sampleSize = 1000;
 			int[] sample = Enumerable.Range(0,sampleSize).ToArray();
 			List<string> timestamps;
 			List<double> accel_x;
@@ -148,7 +148,7 @@ namespace snsrpi.Models
 					accel_z.Add(5*Math.Sin(_t));
 				}
 
-				Thread.Sleep(1000);
+				Thread.Sleep(TimeSpan.FromSeconds(60));
 				t ++;
 				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
 

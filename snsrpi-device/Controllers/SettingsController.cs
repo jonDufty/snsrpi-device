@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using snsrpi.Models;
 using snsrpi.Services;
 using snsrpi.Interfaces;
+using System.Text.Json;
+using Newtonsoft.Json;
 
 
 namespace snsrpi.Controllers
@@ -41,15 +43,14 @@ namespace snsrpi.Controllers
             return settings;
         }
 
-        [HttpPost("{id}")]
+        [HttpPut("{id}")]
         public IActionResult UpdateSettings(string id, AcqusitionSettings settings)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
-
             var device = _loggerManager.GetDevice(id);
             device.Settings = settings;
 
-            return NoContent();
+            return Ok(JsonConvert.SerializeObject(settings));
         }
 
             

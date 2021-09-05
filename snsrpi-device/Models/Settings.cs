@@ -11,43 +11,48 @@ namespace snsrpi.Models
 {
     public class AcqusitionSettings
     {
-        public int Sample_Rate {get; set;}
-        public string Output_Type {get; set;}
-        public bool Offline_Mode {get;}
-        public string Output_Directory {get; set;}
-        public FileUploadSettings File_Upload {get;}
-        public SaveIntervalSettings Save_Interval {get;}
+        public int Sample_rate { get; set; }
+        public string Output_type { get; set; }
+        public bool Offline_mode { get; set; }
+        public string Output_directory { get; set; }
+        public FileUploadSettings File_upload { get; set; }
+        public SaveIntervalSettings Save_interval { get; set; }
 
-        public AcqusitionSettings(int sample, string outputType, string Directory)
+        public static AcqusitionSettings Create(int sample, string outputType, string directory)
         {
-            Sample_Rate = sample;
-            Output_Type = outputType;
-            Offline_Mode = false;
-            Output_Directory = Directory;
-            File_Upload = new(true, "aws.endpoint.arup");
-            Save_Interval = new("minute", 5);
-        }
-        public AcqusitionSettings(bool demo){
-
+            FileUploadSettings file_upload = new(true, "http://localhost:6000");
+            SaveIntervalSettings save_interval = new("minute", 5);
+            return new AcqusitionSettings(sample, outputType, false, directory, file_upload, save_interval);
         }
 
+        public AcqusitionSettings(int sample_rate, string output_type, bool offline_mode, string output_directory,
+        FileUploadSettings file_upload, SaveIntervalSettings save_interval)
+        {
+            Sample_rate = sample_rate;
+            Output_type = output_type;
+            Offline_mode = offline_mode;
+            Output_directory = output_directory;
+            File_upload = file_upload;
+            Save_interval = save_interval;
+        }
     }
 
     public class SaveIntervalSettings
     {
-        private string Unit {get; set;}
-        private int Interval {get; set;}
+        public string Unit { get; set; }
+        public int Interval { get; set; }
 
-        private static Dictionary<string, int> multipliers = new() {
-            {"second",1},
-            {"minute",60},
-            {"hour",3600}
+        private readonly static Dictionary<string, int> multipliers = new()
+        {
+            { "second", 1 },
+            { "minute", 60 },
+            { "hour", 3600 }
         };
 
         public SaveIntervalSettings(string unit, int interval)
         {
-            Unit = unit;
-            Interval = interval;
+            this.Unit = unit;
+            this.Interval = interval;
         }
 
         public int TotalSeconds()
@@ -57,13 +62,13 @@ namespace snsrpi.Models
     }
     public class FileUploadSettings
     {
-        private bool Active {get;}
-        private string EndPoint {get; set;}
+        public bool Active { get; set; }
+        public string Endpoint { get; set; }
 
         public FileUploadSettings(bool active, string endpoint)
         {
             Active = active;
-            EndPoint = endpoint;
+            Endpoint = endpoint;
         }
 
         public bool IsActive()

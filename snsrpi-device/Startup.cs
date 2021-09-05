@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using snsrpi.Services;
+using snsrpi.Models;
 using snsrpi.Interfaces;
 
 namespace snsrpi
@@ -32,6 +34,9 @@ namespace snsrpi
             services.AddControllers();
             var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<LoggerManagerService>();
             var service = new LoggerManagerService(true, logger);
+            Console.WriteLine($"Settings: Offline = {Configuration["Offline"]}");
+            var env = Environment.GetEnvironmentVariable("SETTING_OFFLINE_MODE");
+            Console.WriteLine($"Env var = {env}");
             services.AddSingleton<ILoggerManager>(service);
             services.AddSwaggerGen(c =>
             {
