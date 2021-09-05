@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Sensr.CX;
 using Sensr.Utils;
+using snsrpi.Services;
 
 namespace snsrpi.Models
 {
@@ -23,6 +25,8 @@ namespace snsrpi.Models
 		public CancellationToken TokenDeviceThread {get; set;}
 		public AcqusitionSettings Settings {get; set;}
 
+		private readonly ILogger<LoggerManagerService> Logs;
+
 		public Logger(CXCom _cx, CXDevice _device) 
 		{
 			Cx = _cx;
@@ -34,18 +38,17 @@ namespace snsrpi.Models
 			FileThread = new(new ParameterizedThreadStart(WriteFiles));
 		}
 
-		public Logger(bool demo, string prefix, CancellationToken token)
+		public Logger(bool demo, string prefix, ILogger<LoggerManagerService> _logger, CancellationToken token)
 		{
 			Cx = new();
 			Device = null;
 			Settings = new AcqusitionSettings(500, "csv", "/home/jondufty/data");
 			Output = new CSVOutput(Settings.Output_Directory,prefix);
 			DataBuffers = new();
-			// DeviceThread = new(new ThreadStart(Start));
-			// FileThread = new(WriteFiles);
+			// DeviceThread = null;
+			// FileThread = null;
 			TokenDeviceThread = token;
-			Console.WriteLine(token);
-
+			Logs = _logger;
 		}
 
 		public Logger(CXCom _cx, CXDevice _device, InputData input)
@@ -80,14 +83,14 @@ namespace snsrpi.Models
 				CXCom.LoginStatus login = Cx.Login(CXCom.LoginUserID.Admin, "admin");
 				if (login != CXCom.LoginStatus.Ok)
 				{
-					Console.WriteLine("Could not log into device: {0}", login);
+					Logs.LogWarning("Could not log into device: {0}", login);
 					return false;
 				}
 				return true;
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine($"{e}");
+				Logs.LogInformation($"{e}");
 				return false;
 			}
 		}
@@ -106,7 +109,7 @@ namespace snsrpi.Models
 
 		public void Start()
 		{
-			Console.WriteLine("Starting demo Acqusition...");
+			Logs.LogInformation("Starting demo Acqusition...");
 			Run();
 		}
 
@@ -114,7 +117,7 @@ namespace snsrpi.Models
 		{
 			
 
-			Console.WriteLine("Creating File Writing Thread");
+			Logs.LogDebug("Creating File Writing Thread");
 			CancellationTokenSource source = new();
 			FileThread = new(WriteFiles);
 			FileThread.Start(source.Token);
@@ -147,12 +150,11 @@ namespace snsrpi.Models
 
 				Thread.Sleep(1000);
 				t ++;
-				Console.WriteLine($"Adding sample to queue. Token = {TokenDeviceThread.IsCancellationRequested}, IsCancellable = {TokenDeviceThread.CanBeCanceled}");
 				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
 
 			}
 
-			Console.WriteLine("Cancellation Request received. Sending file thread cancel");
+			Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
 			source.Cancel();
 
 			// Console.
@@ -222,11 +224,11 @@ namespace snsrpi.Models
 				if(DataBuffers.TryDequeue(out data))
 				{
 					//Write the files...
-					Console.Write("Writing files...");	
+					Logs.LogDebug("Writing files...");	
 					Output.Write(data);
 				}
 			}
-			Console.WriteLine("Cancellation request received: Stopping file writes");
+			Logs.LogInformation("Cancellation request received: Stopping file writes");
 		}
 
 	}

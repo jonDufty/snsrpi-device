@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using snsrpi.Models;
 using snsrpi.Services;
 using snsrpi.Interfaces;
+using Newtonsoft.Json;
 
 
 namespace snsrpi.Controllers
@@ -46,6 +47,25 @@ namespace snsrpi.Controllers
         {
             var devices = _loggerManager.ListDevices();
             return devices;
+        }
+
+        [HttpPost("{id}")]
+        public IActionResult Operate(string id, string action)
+        {
+            if (!_loggerManager.CheckDevice(id)) return NotFound();
+            
+            _logger.LogDebug($"action recieved {action}");
+            if (action.Equals("start"))
+            {
+                _loggerManager.StartDevice(id);
+                return Ok($"Device {id} has started");
+            } else if (action.Equals("stop")) {
+                _loggerManager.StopDevice(id);
+                return Ok($"Device {id} has stopped");
+            } else {
+                return BadRequest("Incorrect action given");
+            }
+            // var jsonBody = JsonConvert.DeserializeObject(body);
         }
     }
 }

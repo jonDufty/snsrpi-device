@@ -19,7 +19,7 @@ namespace snsrpi.Interfaces
         void StopDevice(string id);
 
         void StopAllDevices();
-        void SendHeartbeat();
+        void Heartbeat(object stateInfo);
 
     }
 }

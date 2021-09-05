@@ -30,10 +30,12 @@ namespace snsrpi
         {
 
             services.AddControllers();
-            services.AddSingleton<ILoggerManager>(new LoggerManagerService(true));
+            var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<LoggerManagerService>();
+            var service = new LoggerManagerService(true, logger);
+            services.AddSingleton<ILoggerManager>(service);
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "testaspnet", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "snsrpi-device", Version = "v1" });
             });
         }
 

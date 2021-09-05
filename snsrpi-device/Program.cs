@@ -21,6 +21,7 @@ namespace snsrpi
             
             // Init logger manager before starting host
             // InitDataAcquisition();
+
             host.Run();
         }
 
@@ -33,7 +34,14 @@ namespace snsrpi
 
         public static LoggerManagerService InitDataAcquisition() 
         {
-            var manager = new LoggerManagerService(true);
+            var loggerFactory = LoggerFactory.Create(
+                logging => {
+                    logging.AddConsole();
+                    logging.AddDebug();
+                }
+            );
+
+            var manager = new LoggerManagerService(true, loggerFactory.CreateLogger<LoggerManagerService>());
             manager.StartDevice(manager.ListDevices()[0]);
             Thread.Sleep(5000);
             manager.StopAllDevices();

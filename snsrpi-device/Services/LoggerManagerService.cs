@@ -5,10 +5,13 @@ using System.Text;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Http;
+using Microsoft.Extensions.Logging;
 using Sensr.CX;
 using Sensr.Utils;
 using snsrpi.Models;
 using snsrpi.Interfaces;
+
 
 namespace snsrpi.Services
 {
@@ -17,25 +20,18 @@ namespace snsrpi.Services
         private Dictionary<string,Logger> Loggers {get;}
         private Dictionary<string,CancellationTokenSource> LoggerTokens {get; set;}
         public CancellationTokenSource GlobalSource;
-
         private CXCom CX {get;}
-
-        public LoggerManagerService()
+        public Timer HeartbeatTimer {get;}
+        public HttpClient _HttpClient {get;}
+        private readonly ILogger<LoggerManagerService> Logs;
+        
+        public LoggerManagerService(bool demo, ILogger<LoggerManagerService> _logger)
         {
-            Loggers = new();
-            CX = new();
-        }
 
-        public LoggerManagerService(bool _demo)
-        {
-            if(!_demo){
-                Loggers = new();
-                CX = new();
-                return;
-            }
             CX = new();
+            Logs = _logger;
 
-            Console.WriteLine("Creating cancellation token");
+            Logs.LogInformation("Creating cancellation token");
             GlobalSource = new();
             var token = GlobalSource.Token;
 
@@ -47,18 +43,25 @@ namespace snsrpi.Services
             };
 
             Loggers = new(){
-                {"CX1_1901", new Logger(true,"CX1_1901_", LoggerTokens["CX1_1901"].Token)},
-                {"CX1_1902", new Logger(true,"CX1_1902_", LoggerTokens["CX1_1902"].Token)},
-                {"CX1_1903", new Logger(true,"CX1_1903_", LoggerTokens["CX1_1903"].Token)},
-                {"CX1_1904", new Logger(true,"CX1_1904_", LoggerTokens["CX1_1904"].Token)},
+                {"CX1_1901", new Logger(true,"CX1_1901_",_logger, LoggerTokens["CX1_1901"].Token)},
+                {"CX1_1902", new Logger(true,"CX1_1902_",_logger, LoggerTokens["CX1_1902"].Token)},
+                {"CX1_1903", new Logger(true,"CX1_1903_",_logger, LoggerTokens["CX1_1903"].Token)},
+                {"CX1_1904", new Logger(true,"CX1_1904_",_logger, LoggerTokens["CX1_1904"].Token)},
             };
 
-            Console.WriteLine("Bootstrapping system...");
-            Console.WriteLine($"Found {ListDevices().Count} devices");
+            Logs.LogInformation("Bootstrapping system...");
+            var log_string = $"Found {ListDevices().Count} devices";
             foreach (var device in ListDevices())
             {
-                Console.WriteLine(device);
+                log_string += $"\n{device}";
             }
+            Logs.LogInformation(log_string);
+
+            // Create timeer thread for sending regular heartbeats
+            HeartbeatTimer = new Timer(Heartbeat, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
+
+            _HttpClient = new();
+
         }
 
         public List<string> ListDevices()
@@ -74,7 +77,7 @@ namespace snsrpi.Services
         public void StartDevice(string deviceID)
         {
             var device = Loggers[deviceID];
-            Console.WriteLine($"Starting device {deviceID}");
+            Logs.LogInformation($"Starting device {deviceID}");
             // Create new token
 
             device.SetNewDeviceThread();
@@ -87,13 +90,13 @@ namespace snsrpi.Services
 
         public void StopAllDevices()
         {
-            Console.WriteLine("Calling cancel requests");
+            Logs.LogDebug("Calling cancel requests");
             GlobalSource.Cancel();
         }
 
         public void StopDevice(string deviceID)
         {
-            Console.WriteLine($"Cancelling device {deviceID}");
+            Logs.LogInformation($"Cancelling device {deviceID}");
             LoggerTokens[deviceID].Cancel();
             return;
         }
@@ -103,9 +106,12 @@ namespace snsrpi.Services
             return Loggers[deviceID];
         }
 
-        public void SendHeartbeat()
+        public void Heartbeat(Object stateInfo)
         {
-            return;
+            Logs.LogDebug("Sending heartbeat...");
+            // Logs.LogInformation("Sending heartbeat");
+            // var response = _HttpClient.GetAsync("http://aws.heartbeat.endpoint").Result;
+            // Logs.LogDebug(response.ToString());            
         }
 
     }
