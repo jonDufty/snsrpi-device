@@ -21,5 +21,7 @@ namespace snsrpi.Interfaces
         void StopAllDevices();
         void Heartbeat(object stateInfo);
 
+        Health HealthCheck();
+
     }
 }

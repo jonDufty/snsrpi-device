@@ -17,6 +17,7 @@ namespace snsrpi.Services
 {
     public class LoggerManagerService : ILoggerManager
     {
+        private string DeviceName {get;}
         private Dictionary<string,Logger> Loggers {get;}
         private Dictionary<string,CancellationTokenSource> LoggerTokens {get; set;}
         public CancellationTokenSource GlobalSource;
@@ -28,6 +29,7 @@ namespace snsrpi.Services
         public LoggerManagerService(bool demo, ILogger<LoggerManagerService> _logger)
         {
 
+            DeviceName = System.Environment.GetEnvironmentVariable("DEVICE_NAME");
             CX = new();
             Logs = _logger;
 
@@ -43,10 +45,10 @@ namespace snsrpi.Services
             };
 
             Loggers = new(){
-                {"CX1_1901", new Logger(true,"CX1_1901_",_logger, LoggerTokens["CX1_1901"].Token)},
-                {"CX1_1902", new Logger(true,"CX1_1902_",_logger, LoggerTokens["CX1_1902"].Token)},
-                {"CX1_1903", new Logger(true,"CX1_1903_",_logger, LoggerTokens["CX1_1903"].Token)},
-                {"CX1_1904", new Logger(true,"CX1_1904_",_logger, LoggerTokens["CX1_1904"].Token)},
+                {"CX1_1901", new Logger(true,"CX1_1901",_logger, LoggerTokens["CX1_1901"].Token)},
+                {"CX1_1902", new Logger(true,"CX1_1902",_logger, LoggerTokens["CX1_1902"].Token)},
+                {"CX1_1903", new Logger(true,"CX1_1903",_logger, LoggerTokens["CX1_1903"].Token)},
+                {"CX1_1904", new Logger(true,"CX1_1904",_logger, LoggerTokens["CX1_1904"].Token)},
             };
 
             Logs.LogInformation("Bootstrapping system...");
@@ -58,7 +60,7 @@ namespace snsrpi.Services
             Logs.LogInformation(log_string);
 
             // Create timeer thread for sending regular heartbeats
-            HeartbeatTimer = new Timer(Heartbeat, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
+            // HeartbeatTimer = new Timer(Heartbeat, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
 
             _HttpClient = new();
 
@@ -112,6 +114,16 @@ namespace snsrpi.Services
             // Logs.LogInformation("Sending heartbeat");
             // var response = _HttpClient.GetAsync("http://aws.heartbeat.endpoint").Result;
             // Logs.LogDebug(response.ToString());            
+        }
+
+        public Health HealthCheck(){
+            Logs.LogDebug("Healthcheck");
+            List<SensorStatus> sensors = new();
+            foreach (var dev in Loggers.Keys)
+            {
+                sensors.Add(new SensorStatus(dev, Loggers[dev].IsActive));
+            }
+            return new Health(DeviceName, sensors);
         }
 
     }

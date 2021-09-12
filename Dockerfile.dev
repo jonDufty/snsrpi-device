@@ -6,15 +6,10 @@ WORKDIR /src
 # COPY *.sln .
 COPY snsrpi-device/*.csproj .
 RUN dotnet restore
+RUN dotnet dev-certs https --clean
+RUN dotnet dev-certs https -t
 
 # copy everything else and build app
-COPY snsrpi-device/ .
-COPY snsrpi-device/config /config
+# COPY snsrpi-device/ .
 WORKDIR /src
-RUN dotnet publish -c release -o /app
-
-# final stage/image
-FROM mcr.microsoft.com/dotnet/aspnet:5.0
-WORKDIR /app
-COPY --from=build /app ./
-ENTRYPOINT ["./snsrpi-device"]
+CMD ["dotnet", "watch", "run"]

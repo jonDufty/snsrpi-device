@@ -34,9 +34,7 @@ namespace snsrpi
             services.AddControllers();
             var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<LoggerManagerService>();
             var service = new LoggerManagerService(true, logger);
-            Console.WriteLine($"Settings: Offline = {Configuration["Offline"]}");
-            var env = Environment.GetEnvironmentVariable("SETTING_OFFLINE_MODE");
-            Console.WriteLine($"Env var = {env}");
+            // Console.WriteLine($"Settings: Offline = {Configuration["Offline"]}");
             services.AddSingleton<ILoggerManager>(service);
             services.AddSwaggerGen(c =>
             {
@@ -49,6 +47,7 @@ namespace snsrpi
         {
             if (env.IsDevelopment())
             {
+                Console.WriteLine("ENV = Development");
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "testaspnet v1"));

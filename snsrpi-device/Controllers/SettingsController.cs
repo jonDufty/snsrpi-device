@@ -34,7 +34,7 @@ namespace snsrpi.Controllers
         }
 
         [HttpGet("{id}")]
-        public ActionResult<AcqusitionSettings> GetSettings(string id)
+        public ActionResult<AcquisitionSettings> GetSettings(string id)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
 
@@ -44,11 +44,12 @@ namespace snsrpi.Controllers
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateSettings(string id, AcqusitionSettings settings)
+        public IActionResult UpdateSettings(string id, AcquisitionSettings settings)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
             var device = _loggerManager.GetDevice(id);
             device.Settings = settings;
+            device.SaveSettings();
 
             return Ok(JsonConvert.SerializeObject(settings));
         }

@@ -16,6 +16,7 @@ namespace snsrpi.Models
 {
 	public class Logger
 	{
+		public string Device_id {get; set;}
 		public Thread DeviceThread {get; set;}
 		public Thread FileThread {get; set;}
 		public CXCom Cx { get; }
@@ -23,32 +24,29 @@ namespace snsrpi.Models
 		public OutputData Output { get; set; }
 		public ConcurrentQueue<VibrationData> DataBuffers { get; }
 		public CancellationToken TokenDeviceThread {get; set;}
-		public AcqusitionSettings Settings {get; set;}
+		public AcquisitionSettings Settings {get; set;}
+
+		public bool IsActive {get; set;}
+		public bool Demo {get; set;}
 
 		private readonly ILogger<LoggerManagerService> Logs;
 
-		public Logger(CXCom _cx, CXDevice _device) 
-		{
-			Cx = _cx;
-			Device = _device;
-			Output = new CSVOutput("./", "CX1_");
-			DataBuffers = new();
-			Settings =  AcqusitionSettings.Create(500, "csv", "/home/jondufty/data");
-			DeviceThread = new(new ThreadStart(Start));
-			FileThread = new(new ParameterizedThreadStart(WriteFiles));
-		}
 
-		public Logger(bool demo, string prefix, ILogger<LoggerManagerService> _logger, CancellationToken token)
+
+		public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
 		{
 			Cx = new();
+			Device_id = device_id;
 			Device = null;
-			Settings = AcqusitionSettings.Create(500, "csv", "/home/jondufty/data");
-			Output = new CSVOutput(Settings.Output_directory, prefix);
+			Settings = InitialiseSettings();
+			Output = new CSVOutput(Settings.Output_directory, device_id + "_");
 			DataBuffers = new();
-			// DeviceThread = null;
-			// FileThread = null;
+			DeviceThread = null;
+			FileThread = null;
 			TokenDeviceThread = token;
 			Logs = _logger;
+			IsActive = false;
+			Demo = demo;
 		}
 
 		public Logger(CXCom _cx, CXDevice _device, InputData input)
@@ -110,10 +108,12 @@ namespace snsrpi.Models
 		public void Start()
 		{
 			Logs.LogInformation("Starting demo Acqusition...");
-			Run();
+			IsActive = true;
+			if (Demo)
+				RunDemo();
 		}
 
-		public void Run()
+		public void RunDemo()
 		{
 			
 
@@ -155,6 +155,7 @@ namespace snsrpi.Models
 			}
 
 			Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
+			IsActive = false;
 			source.Cancel();
 
 			// Console.
@@ -229,6 +230,32 @@ namespace snsrpi.Models
 				}
 			}
 			Logs.LogInformation("Cancellation request received: Stopping file writes");
+		}
+
+		private AcquisitionSettings InitialiseSettings()
+		{
+			string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
+			if (configPath != null)
+			{
+				var configFileName = Device_id + "_config.json";
+				configPath = Path.Combine(configPath, configFileName);
+				if (File.Exists(configPath))
+				{
+					AcquisitionSettings settings = AcquisitionSettings.LoadFromFile(configPath);
+					return settings;
+				}
+			}
+			return AcquisitionSettings.Create(500, "csv", "/home/jondufty/data"); 
+
+		}
+
+		public void SaveSettings()
+		{
+			string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
+			if (Directory.Exists(configPath))
+				configPath = Path.Combine(configPath, Device_id + "_config.json");
+				Logs.LogInformation($"Saving config to {configPath}");
+				Settings.SaveToFile(configPath);
 		}
 
 	}

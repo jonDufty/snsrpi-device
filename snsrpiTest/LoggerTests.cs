@@ -24,7 +24,7 @@ namespace snsrpi.Tests
         [TestInitialize]
         public void TestInitialize()
         {
-            loggerManager = new(true);
+            // loggerManager = new(true);
         }
 
         [TestMethod]

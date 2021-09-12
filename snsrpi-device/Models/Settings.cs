@@ -6,10 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Sensr.CX;
 using Sensr.Utils;
+using Newtonsoft.Json;
 
 namespace snsrpi.Models
 {
-    public class AcqusitionSettings
+    public class AcquisitionSettings
     {
         public int Sample_rate { get; set; }
         public string Output_type { get; set; }
@@ -18,14 +19,14 @@ namespace snsrpi.Models
         public FileUploadSettings File_upload { get; set; }
         public SaveIntervalSettings Save_interval { get; set; }
 
-        public static AcqusitionSettings Create(int sample, string outputType, string directory)
+        public static AcquisitionSettings Create(int sample, string outputType, string directory)
         {
             FileUploadSettings file_upload = new(true, "http://localhost:6000");
             SaveIntervalSettings save_interval = new("minute", 5);
-            return new AcqusitionSettings(sample, outputType, false, directory, file_upload, save_interval);
+            return new AcquisitionSettings(sample, outputType, false, directory, file_upload, save_interval);
         }
 
-        public AcqusitionSettings(int sample_rate, string output_type, bool offline_mode, string output_directory,
+        public AcquisitionSettings(int sample_rate, string output_type, bool offline_mode, string output_directory,
         FileUploadSettings file_upload, SaveIntervalSettings save_interval)
         {
             Sample_rate = sample_rate;
@@ -34,6 +35,28 @@ namespace snsrpi.Models
             Output_directory = output_directory;
             File_upload = file_upload;
             Save_interval = save_interval;
+        }
+
+        public static AcquisitionSettings LoadFromFile(string filePath)
+        {
+            using StreamReader file = File.OpenText(filePath);
+            var serializer = new JsonSerializer();
+            try
+            {
+                AcquisitionSettings settings = (AcquisitionSettings)serializer.Deserialize(file, typeof(AcquisitionSettings));
+                return settings;
+            }
+            catch
+            {
+                return Create(500, "csv", "/home/jondufty/data");
+            }
+        }
+
+        public void SaveToFile(string filePath)
+        {
+            using StreamWriter file = File.CreateText(filePath);
+            var serializer = new JsonSerializer();
+            serializer.Serialize(file, this);
         }
     }
 
