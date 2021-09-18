@@ -83,7 +83,7 @@ class Device:
             result = resp.json()
         except Exception as e:
             logging.error(f"Request to {url} failed")
-            print("Error: ",e)
+            print("Error: ", e)
             result = {
                 "status": "Failed",
                 "error": "Settings request failed"
@@ -105,7 +105,7 @@ class Device:
                     result = resp.json()
                 except Exception as e:
                     logging.error(f"Request to {url} failed")
-                    print("Error: ",e)
+                    print("Error: ", e)
                     result = {
                         "status": "Failed",
                         "error": "Operate request failed"
@@ -144,7 +144,7 @@ class Device:
             self.pub_healthcheck(result)
         except Exception as e:
             logging.error("Heartbeat failed")
-            print("Error: ",e)
+            print("Error: ", e)
 
         return
 

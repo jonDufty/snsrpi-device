@@ -4,7 +4,9 @@
 import argparse
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
-import sys, os
+import sys
+import os
+import signal
 import threading
 from datetime import datetime, timedelta
 import time
@@ -23,16 +25,19 @@ AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
 # io.init_logging()
 
 received_count = 0
-received_all_event = threading.Event()
+stop_recording_event = threading.Event()
 
 # Callback when connection is accidentally lost.
+
+
 def on_connection_interrupted(connection, error, **kwargs):
     print("Connection interrupted. error: {}".format(error))
 
 
 # Callback when an interrupted connection is re-established.
 def on_connection_resumed(connection, return_code, session_present, **kwargs):
-    print("Connection resumed. return_code: {} session_present: {}".format(return_code, session_present))
+    print("Connection resumed. return_code: {} session_present: {}".format(
+        return_code, session_present))
 
     if return_code == mqtt.ConnectReturnCode.ACCEPTED and not session_present:
         print("Session did not persist. Resubscribing to existing topics...")
@@ -44,28 +49,29 @@ def on_connection_resumed(connection, return_code, session_present, **kwargs):
 
 
 def on_resubscribe_complete(resubscribe_future):
-        resubscribe_results = resubscribe_future.result()
-        print("Resubscribe results: {}".format(resubscribe_results))
+    resubscribe_results = resubscribe_future.result()
+    print("Resubscribe results: {}".format(resubscribe_results))
 
-        for topic, qos in resubscribe_results['topics']:
-            if qos is None:
-                sys.exit("Server rejected resubscribe to topic: {}".format(topic))
+    for topic, qos in resubscribe_results['topics']:
+        if qos is None:
+            sys.exit("Server rejected resubscribe to topic: {}".format(topic))
 
 
 # Callback when the subscribed topic receives a message
-def on_message_received(topic, payload, dup, qos, retain, **kwargs):
-    print("Received message from topic '{}': {}".format(topic, payload))
-    global received_count
-    received_count += 1
-    if received_count == 10:
-        received_all_event.set()
+def signal_handler(signal, frame):
+    print("Terminate Signal Recieved")
+    stop_recording_event.set()
+
 
 if __name__ == '__main__':
-    
+
     AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
     DEVICE_ENDPOINT = os.environ["DEVICE_ENDPOINT"]
     DEVICE_NAME = os.environ["DEVICE_NAME"]
-    
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # Spin up resources
     event_loop_group = io.EventLoopGroup(1)
     host_resolver = io.DefaultHostResolver(event_loop_group)
@@ -90,7 +96,8 @@ if __name__ == '__main__':
 
     device.set_mqtt(mqtt_connection)
 
-    print(f"Connecting to {AWS_IOT_ENDPOINT} with client ID '{device.name}'...")
+    print(
+        f"Connecting to {AWS_IOT_ENDPOINT} with client ID '{device.name}'...")
 
     connect_future = mqtt_connection.connect()
     # Future.result() waits until a result is available
@@ -106,19 +113,12 @@ if __name__ == '__main__':
 
     subscribe_result = subscribe_future.result()
     print("Subscribed with {}".format(str(subscribe_result['qos'])))
-  
-    # This waits forever if count was set to 0.
-    if not received_all_event.is_set():
-        print("Waiting for all messages to be received...")
 
-    received_all_event.wait()
-    print("{} message(s) received.".format(received_count))
-    end_time = time.time() + 300 
-    while time.time() < end_time:
-        pass
+    stop_recording_event.wait()
 
     # Disconnect
     print("Disconnecting...")
     disconnect_future = mqtt_connection.disconnect()
     disconnect_future.result()
     print("Disconnected!")
+    exit()

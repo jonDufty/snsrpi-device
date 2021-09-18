@@ -7,6 +7,7 @@ RUN pip install -r requirements.txt
 EXPOSE 443
 EXPOSE 8443
 
+# Only having these set if running in a standalone container. Probably unecessary
 ENV AWS_IOT_ENDPOINT="a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com"
 ENV DEVICE_ENDPOINT="localhost:5000"
 ENV PRIVATE_KEY="/src/certs/private.pem.key"
@@ -16,4 +17,4 @@ ENV DEVICE_NAME="local_device"
 
 COPY iot .
 
-CMD ["python", "main.py"]
+CMD ["python", "-u", "main.py"]
