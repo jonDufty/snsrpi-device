@@ -3,8 +3,8 @@ version: "3.7"
 services:
   device:
     image: device:latest
-    ports:
-      - 5000:5000
+    # ports:
+    #   - 5000:5000
     environment:
       "DEVICE_CONFIG_DIR" : "/config"
       # "ASPNETCORE_ENVIRONMENT" : "Development"
