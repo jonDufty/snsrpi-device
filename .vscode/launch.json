@@ -2,6 +2,36 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "env": {
+                "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com",
+                "DEVICE_ENDPOINT": "localhost:5000",
+                "PRIVATE_KEY": "iot/certs/private.pem.key",
+                "ROOT_CA": "iot/certs/Amazon-root-CA-1.pem",
+                "DEVICE_CERT": "iot/certs/device.pem.crt",
+                "DEVICE_NAME": "local_device"
+            }
+        },
+        {
+            "name": "Python: iot/main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/iot/main.py",
+            "console": "integratedTerminal",
+            "env": {
+                "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com",
+                "DEVICE_ENDPOINT": "localhost:5000",
+                "PRIVATE_KEY": "iot/certs/private.pem.key",
+                "ROOT_CA": "iot/certs/Amazon-root-CA-1.pem",
+                "DEVICE_CERT": "iot/certs/device.pem.crt",
+                "DEVICE_NAME": "local_device"
+            }
+        },
+        {
             // Use IntelliSense to find out which attributes exist for C# debugging
             // Use hover for the description of the existing attributes
             // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md

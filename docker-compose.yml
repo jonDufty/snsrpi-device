@@ -8,4 +8,24 @@ services:
     environment:
       "DEVICE_CONFIG_DIR" : "/config"
       # "ASPNETCORE_ENVIRONMENT" : "Development"
-      # "ASPNETCORE_URLS" : "http://+:80"
+      "ASPNETCORE_URLS" : "http://+:5000"
+    networks: 
+      - iot-network
+  
+  iot:
+    image: iot:latest
+    environment: 
+      "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com"
+      "DEVICE_ENDPOINT": "device:5000"
+      "PRIVATE_KEY": "/src/certs/private.pem.key"
+      "ROOT_CA": "/src/certs/Amazon-root-CA-1.pem"
+      "DEVICE_CERT": "/src/certs/device.pem.crt"
+      "DEVICE_NAME": "local_device"
+    ports: 
+      - 443:443
+      - 8443:8443
+    networks: 
+      - iot-network
+    
+networks: 
+  iot-network:

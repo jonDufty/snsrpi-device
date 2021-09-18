@@ -31,15 +31,24 @@ namespace snsrpi.Controllers
             if (!_loggerManager.CheckDevice(id)) return NotFound();
             _logger.LogInformation("Device found...");
             _loggerManager.StartDevice(id);
-            return Ok($"Device {id} has started");
+            var result = new Dictionary<string,string>();
+            result.Add("result","Success");
+            result.Add("message",$"Device {id} successfully stopped");   
+
+            return new JsonResult(result);
         }
 
         [HttpPost("{id}/stop")]
         public IActionResult Stop(string id)
         {
+            var result = new Dictionary<string,string>();
+
             if (!_loggerManager.CheckDevice(id)) return NotFound();
-             _loggerManager.StopDevice(id);
-            return Ok("All devices stopped");
+            
+            _loggerManager.StopDevice(id);
+            result.Add("result","Success");
+            result.Add("message",$"Device {id} successfully stopped");            
+            return new JsonResult(result);
         }
 
         [HttpGet]
@@ -53,19 +62,19 @@ namespace snsrpi.Controllers
         public IActionResult Operate(string id, string action)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
-            
+            var result = new Dictionary<string, string>();
             _logger.LogDebug($"action recieved {action}");
             if (action.Equals("start"))
             {
                 _loggerManager.StartDevice(id);
-                return Ok($"Device {id} has started");
+                result.Add("result",$"Device {id} start successfully");
             } else if (action.Equals("stop")) {
                 _loggerManager.StopDevice(id);
-                return Ok($"Device {id} has stopped");
+                result.Add("result",$"Device {id} stopped successfully");
             } else {
-                return BadRequest("Incorrect action given");
+                return BadRequest();
             }
-            // var jsonBody = JsonConvert.DeserializeObject(body);
+            return new JsonResult(result);
         }
     }
 }

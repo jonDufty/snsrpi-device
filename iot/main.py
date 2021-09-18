@@ -6,6 +6,7 @@ from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import sys, os
 import threading
+from datetime import datetime, timedelta
 import time
 from uuid import uuid4
 import json
@@ -60,13 +61,18 @@ def on_message_received(topic, payload, dup, qos, retain, **kwargs):
         received_all_event.set()
 
 if __name__ == '__main__':
+    
+    AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
+    DEVICE_ENDPOINT = os.environ["DEVICE_ENDPOINT"]
+    DEVICE_NAME = os.environ["DEVICE_NAME"]
+    
     # Spin up resources
     event_loop_group = io.EventLoopGroup(1)
     host_resolver = io.DefaultHostResolver(event_loop_group)
     client_bootstrap = io.ClientBootstrap(event_loop_group, host_resolver)
 
     proxy_options = None
-    device = Device()
+    device = Device(DEVICE_NAME, DEVICE_ENDPOINT)
 
     mqtt_connection = mqtt_connection_builder.mtls_from_path(
         endpoint=AWS_IOT_ENDPOINT,
@@ -82,6 +88,8 @@ if __name__ == '__main__':
         keep_alive_secs=30,
         http_proxy_options=proxy_options)
 
+    device.set_mqtt(mqtt_connection)
+
     print(f"Connecting to {AWS_IOT_ENDPOINT} with client ID '{device.name}'...")
 
     connect_future = mqtt_connection.connect()
@@ -90,42 +98,24 @@ if __name__ == '__main__':
     print("Connected!")
 
     # Subscribe
-    topic = "test/test"
-    print(f"Subscribing to topic '{topic}")
+    print(f"Subscribing to topic '{device.sub_topic}")
     subscribe_future, packet_id = mqtt_connection.subscribe(
-        topic=topic,
+        topic=device.sub_topic,
         qos=mqtt.QoS.AT_LEAST_ONCE,
-        callback=on_message_received)
+        callback=device.on_message_received)
 
     subscribe_result = subscribe_future.result()
     print("Subscribed with {}".format(str(subscribe_result['qos'])))
-
-    # Publish message to server desired number of times.
-    # This step is skipped if message is blank.
-    # This step loops forever if count was set to 0.
-    message = "Hello"
-    if message:
-        print ("Sending {} message(s)".format(10))
-
-        publish_count = 1
-        while (publish_count <= 10) or (10 == 0):
-            message = "{} [{}]".format(message, publish_count)
-            print("Publishing message to topic '{}': {}".format(topic, message))
-            message_json = json.dumps(message)
-            mqtt_connection.publish(
-                topic=topic,
-                payload=message_json,
-                qos=mqtt.QoS.AT_LEAST_ONCE)
-            time.sleep(1)
-            publish_count += 1
-
-    # Wait for all messages to be received.
+  
     # This waits forever if count was set to 0.
     if not received_all_event.is_set():
         print("Waiting for all messages to be received...")
 
     received_all_event.wait()
     print("{} message(s) received.".format(received_count))
+    end_time = time.time() + 300 
+    while time.time() < end_time:
+        pass
 
     # Disconnect
     print("Disconnecting...")

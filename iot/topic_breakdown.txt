@@ -1,0 +1,27 @@
+two main streams
+data/vibration/DEVICE/CX1_*/# - for telemetry (heartbeats)
+cmd/vibration/DEVICE/CX1_*/# - for command and requests
+
+data end points for publishing data
+data/vibration/rpi-001/CX1_1901/heartbeat
+
+command end points
+cmd/vibration/rpi-001/CX1_1901/settings
+    Inside body:
+    {
+        action: get, update, post,
+        resp-topic:string,
+        settings : {
+
+        }
+    }
+cmd/vibration/rpi-001/CX1_1901/settings/resp
+    For responses
+
+cmd/vibration/rpi-001/CX1_1901/operate
+    Inside body
+    {
+        "action": start | stop,
+        "resp-topic":string
+    }
+cmd/vibration/rpi-001/CX1_1901/operate/resp
