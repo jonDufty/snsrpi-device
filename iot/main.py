@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0.
 
 import argparse
+from ShadowHandler import SensorShadowHandler, GlobalShadowHandler
 from awscrt import io, mqtt, auth, http
-from awsiot import mqtt_connection_builder
+from awsiot import mqtt_connection_builder, iotshadow
 import sys
 import os
 import signal
 import threading
-from datetime import datetime, timedelta
-import time
-from uuid import uuid4
 import json
+import time
+from datetime import datetime, timedelta
+from uuid import uuid4
 from Device import Device
 
 # This sample uses the Message Broker for AWS IoT to send and receive messages
@@ -57,6 +58,10 @@ def on_resubscribe_complete(resubscribe_future):
             sys.exit("Server rejected resubscribe to topic: {}".format(topic))
 
 
+def on_delta_update(delta: iotshadow.ShadowDeltaUpdatedEvent):
+    print("Delta received...")
+    print(delta.state)
+
 # Callback when the subscribed topic receives a message
 def signal_handler(signal, frame):
     print("Terminate Signal Recieved")
@@ -95,30 +100,45 @@ if __name__ == '__main__':
         http_proxy_options=proxy_options)
 
     device.set_mqtt(mqtt_connection)
+    shadow_client = iotshadow.IotShadowClient(mqtt_connection)
 
     print(
         f"Connecting to {AWS_IOT_ENDPOINT} with client ID '{device.name}'...")
 
     connect_future = mqtt_connection.connect()
-    # Future.result() waits until a result is available
     connect_future.result()
     print("Connected!")
 
-    # Subscribe
-    print(f"Subscribing to topic '{device.sub_topic}")
-    subscribe_future, packet_id = mqtt_connection.subscribe(
-        topic=device.sub_topic,
-        qos=mqtt.QoS.AT_LEAST_ONCE,
-        callback=device.on_message_received)
+    device.set_global_shadow(shadow_client)
+    device.get_healthcheck()
+    device.global_shadow.set_state(device.global_shadow.local_state, update_index=True)
+    device.global_shadow.update_state(override_desired=True)
+    
+    sensors = device.global_shadow.local_state['sensors']
+    for s in sensors:
+        id = s['sensor_id']
+        shadow = SensorShadowHandler(
+            shadow_client, device.name, id, id, device.device_endpoint, device.get_healthcheck
+        )
+        shadow.set_state('active', s['active'])
+        result = shadow.get_or_update_sensor_settings()
+        if result['error']:
+            print(f'failed to get initial settings of sensor {id}')
+        shadow.update_state(override_desired=True)
+        device.sensor_shadows.append(shadow)
 
-    subscribe_result = subscribe_future.result()
-    print("Subscribed with {}".format(str(subscribe_result['qos'])))
+    device.enable_heartbeat()
 
+    # Listen continuously/wait until stop signal received
     stop_recording_event.wait()
 
     # Disconnect
+    print("Gracefully exitting")
+    device.delete_shadows()
+
     print("Disconnecting...")
     disconnect_future = mqtt_connection.disconnect()
     disconnect_future.result()
     print("Disconnected!")
+    
     exit()

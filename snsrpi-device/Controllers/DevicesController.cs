@@ -59,21 +59,22 @@ namespace snsrpi.Controllers
         }
 
         [HttpPost("{id}")]
-        public IActionResult Operate(string id, string action)
+        public IActionResult Operate(string id, bool active)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
-            var result = new Dictionary<string, string>();
-            _logger.LogDebug($"action recieved {action}");
-            if (action.Equals("start"))
+            var device = _loggerManager.GetDevice(id);
+
+            _logger.LogDebug($"Active recieved {active}");
+            if (active && !device.IsActive)
             {
                 _loggerManager.StartDevice(id);
-                result.Add("result",$"Device {id} start successfully");
-            } else if (action.Equals("stop")) {
+            } else if (!active && device.IsActive) {
                 _loggerManager.StopDevice(id);
-                result.Add("result",$"Device {id} stopped successfully");
             } else {
                 return BadRequest();
             }
+            var result = _loggerManager.HealthCheck();
+
             return new JsonResult(result);
         }
     }

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using snsrpi.Services;
 using snsrpi.Interfaces;
+using snsrpi.Models;
 
 namespace snsrpi
 {
@@ -18,7 +19,7 @@ namespace snsrpi
         {
 
             var host = CreateHostBuilder(args).Build();
-            
+
             // Init logger manager before starting host
             // InitDataAcquisition();
 

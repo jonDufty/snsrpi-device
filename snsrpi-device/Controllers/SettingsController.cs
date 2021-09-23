@@ -44,14 +44,14 @@ namespace snsrpi.Controllers
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateSettings(string id, AcquisitionSettings settings)
+        public ActionResult<AcquisitionSettings> UpdateSettings(string id, AcquisitionSettings settings)
         {
             if (!_loggerManager.CheckDevice(id)) return NotFound();
             var device = _loggerManager.GetDevice(id);
             device.Settings = settings;
-            device.SaveSettings();
+            // device.SaveSettings();
 
-            return Ok(JsonConvert.SerializeObject(settings));
+            return Ok(settings);
         }
 
             

@@ -25,3 +25,13 @@ cmd/vibration/rpi-001/CX1_1901/operate
         "resp-topic":string
     }
 cmd/vibration/rpi-001/CX1_1901/operate/resp
+
+
+Shadow Breakdowns
+
+$aws/things/local_device/shadow/name/devices - for receiving global state. Does not get updated by services
+$aws/things/local_device/shadow/name/{CX1_DEVICE} - for settings of individual device state
+    {'active': True/False
+    'settings':{
+        {SETTINGS JSON}
+    }}

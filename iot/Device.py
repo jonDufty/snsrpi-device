@@ -7,6 +7,7 @@ import time
 from awscrt import io, mqtt, auth, http
 from requests.api import request
 from Auth import Auth
+from ShadowHandler import GlobalShadowHandler
 
 DEVICE_ENDPOINT = os.environ["DEVICE_ENDPOINT"]
 DEVICE_NAME = os.environ["DEVICE_NAME"]
@@ -19,117 +20,35 @@ class Device:
         self.name = device_name
         self.mqtt = None
         self.device_endpoint = device_endpoint
-        self.msg_handler = {
-            "settings": self.sub_get_settings,
-            "operate": self.sub_operate_device
-        }
-        self.sub_topic = f"cmd/vibration/{DEVICE_NAME}/#"
-        self.pub_topic = f"data/vibration/{DEVICE_NAME}/"
-
         self.heartbeat_thread = threading.Thread(
             target=self.heartbeat, name="health", kwargs={"timer": 10})
+        self.disable_heartbeat_event = threading.Event()
+
+        self.global_shadow = None
+        self.sensor_shadows = []
+
+    def set_global_shadow(self, shadow_client):
+        self.global_shadow = GlobalShadowHandler(
+            shadow_client, self.name, "global", self.device_endpoint, self.get_healthcheck)
 
     def set_mqtt(self, mqtt):
         self.mqtt = mqtt
+
+    def enable_heartbeat(self):
+        self.disable_heartbeat_event.clear()
         self.heartbeat_thread.start()
 
-    def on_message_received(self, topic, payload, dup, qos, retain, **kwargs):
-        print(f"Received message: \ntopic = '{topic}'\npayload={payload}")
-        try:
-            # Based on assumed topic convention
-            sensor_name, action = topic.split("/")[-2:]
-        except:
-            logging.error(
-                "Incorrect topic naming convention, message handling failed")
-            return
+    def disable_heartbeat(self):
+        self.disable_heartbeat_event.set()
 
-        message = json.loads(payload)
-        if "resp-topic" in message.keys():
-            resp_topic = message["resp-topic"]
-        else:
-            resp_topic = topic + "/resp"
+    def delete_shadows(self):
+        self.disable_heartbeat()
+        self.global_shadow.delete_shadow()
+        for s in self.sensor_shadows:
+            s.delete_shadow()
 
-        if action in self.msg_handler.keys():
-            result = self.msg_handler[action](message, topic, sensor_name)
-            print(f"{action} completed with result: {result}")
-
-            # Forward result to response topic
-            self.mqtt.publish(
-                topic=resp_topic,
-                payload=json.dumps(result),
-                qos=mqtt.QoS.AT_LEAST_ONCE
-            )
-
-        else:
-            logging.error(f"No handler present for action {action}")
-
-        return
-
-    def sub_get_settings(self, message: dict, topic: str, sensor_name: str):
-        print("Invoking function get_settings")
-
-        method = "GET"  # default
-        body = None
-        if "action" in message.keys():
-            if message['action'] in ["post", "put", "update"]:
-                method = "PUT"
-                body = message["body"]
-
-        url = f"http://{self.device_endpoint}/api/settings/{sensor_name}"
-
-        try:
-            resp = request(method=method, url=url, json=body)
-            resp.raise_for_status()
-            result = resp.json()
-        except Exception as e:
-            logging.error(f"Request to {url} failed")
-            print("Error: ", e)
-            result = {
-                "status": "Failed",
-                "error": "Settings request failed"
-            }
-
-        return result
-
-    def sub_operate_device(self, message: dict, topic: str, sensor_name: str):
-        print("Invoking action operate")
-
-        url = f"http://{self.device_endpoint}/api/devices/{sensor_name}"
-        method = "POST"  # default
-        if "action" in message.keys():
-            if message['action'].lower() in ['start', 'stop']:
-                try:
-                    resp = request(method=method, url=url, params={
-                                   "action": message['action']})
-                    resp.raise_for_status()
-                    result = resp.json()
-                except Exception as e:
-                    logging.error(f"Request to {url} failed")
-                    print("Error: ", e)
-                    result = {
-                        "status": "Failed",
-                        "error": "Operate request failed"
-                    }
-                return result
-
-        # If gets to here, incorrect body
-        result = {
-            "status": "Failed",
-            "error": "Request failed. Incorrect query parameters in message body"
-        }
-
-        return result
-
-    def pub_healthcheck(self, payload: dict):
-        topic = self.pub_topic + "heartbeat"
-        self.mqtt.publish(
-            topic=topic,
-            payload=json.dumps(payload),
-            qos=mqtt.QoS.AT_LEAST_ONCE)
-        print(f"Heartbeat sent to {topic}")
-
-    def heartbeat(self, timer=10):
-        while True:
+    def heartbeat(self, timer=60):
+        while not self.disable_heartbeat_event.is_set():
             self.get_healthcheck()
             time.sleep(timer)
 
@@ -141,7 +60,8 @@ class Device:
             response = requests.get(url)
             response.raise_for_status()
             result = response.json()
-            self.pub_healthcheck(result)
+            self.global_shadow.set_state(result)
+            self.global_shadow.update_state()
         except Exception as e:
             logging.error("Heartbeat failed")
             print("Error: ", e)

@@ -32,6 +32,8 @@ namespace snsrpi.Services
             DeviceName = System.Environment.GetEnvironmentVariable("DEVICE_NAME");
             CX = new();
             Logs = _logger;
+            // Console.WriteLine("Trying CX API");
+            // var loggers = CXUtils.List();  
 
             Logs.LogInformation("Creating cancellation token");
             GlobalSource = new();
@@ -87,6 +89,8 @@ namespace snsrpi.Services
             LoggerTokens[deviceID] = cst;
             device.TokenDeviceThread = cst.Token;            
             device.DeviceThread.Start();
+            device.IsActive = true;
+            
             return;
         }
 
@@ -100,6 +104,7 @@ namespace snsrpi.Services
         {
             Logs.LogInformation($"Cancelling device {deviceID}");
             LoggerTokens[deviceID].Cancel();
+            Loggers[deviceID].IsActive = false;
             return;
         }
 

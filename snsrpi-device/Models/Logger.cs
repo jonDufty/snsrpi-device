@@ -108,7 +108,7 @@ namespace snsrpi.Models
 		public void Start()
 		{
 			Logs.LogInformation("Starting demo Acqusition...");
-			IsActive = true;
+			// IsActive = true;
 			if (Demo)
 				RunDemo();
 		}
@@ -155,7 +155,7 @@ namespace snsrpi.Models
 			}
 
 			Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
-			IsActive = false;
+			// IsActive = false;
 			source.Cancel();
 
 			// Console.
