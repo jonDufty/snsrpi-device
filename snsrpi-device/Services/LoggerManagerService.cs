@@ -32,8 +32,8 @@ namespace snsrpi.Services
             DeviceName = System.Environment.GetEnvironmentVariable("DEVICE_NAME");
             CX = new();
             Logs = _logger;
-            // Console.WriteLine("Trying CX API");
-            // var loggers = CXUtils.List();  
+            Console.WriteLine("Trying CX API");
+            var loggers = CXUtils.List();  
 
             Logs.LogInformation("Creating cancellation token");
             GlobalSource = new();

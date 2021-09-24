@@ -15,9 +15,7 @@ namespace snsrpi.Models
         public static List<CXDevice> List()
         {
             CXCom cx = new();
-            string search = "";
-
-         
+            string search = "interface=ethernet";         
 
             //Placeholder list
             List<CXDevice> devs = new();
