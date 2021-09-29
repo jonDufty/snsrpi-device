@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -22,7 +23,7 @@ namespace snsrpi.Models
         public static AcquisitionSettings Create(int sample, string outputType, string directory)
         {
             FileUploadSettings file_upload = new(true, "http://localhost:6000");
-            SaveIntervalSettings save_interval = new("minute", 5);
+            SaveIntervalSettings save_interval = new("minute", 1);
             return new AcquisitionSettings(sample, outputType, false, directory, file_upload, save_interval);
         }
 
@@ -44,7 +45,9 @@ namespace snsrpi.Models
             try
             {
                 AcquisitionSettings settings = (AcquisitionSettings)serializer.Deserialize(file, typeof(AcquisitionSettings));
+                Console.WriteLine(settings);
                 return settings;
+                
             }
             catch
             {

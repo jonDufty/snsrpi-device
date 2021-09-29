@@ -35,6 +35,7 @@ namespace snsrpi.Models
 
         public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
+            Logs = _logger;
             Cx = new();
             Device_id = device_id;
             Device = null;
@@ -50,9 +51,9 @@ namespace snsrpi.Models
             DeviceThread = null;
             FileThread = null;
             TokenDeviceThread = token;
-            Logs = _logger;
             IsActive = false;
             Demo = demo;
+            Console.WriteLine($"Demo = {demo}");
         }
 
         public Logger(CXCom _cx, CXDevice _device, InputData input)
@@ -71,6 +72,7 @@ namespace snsrpi.Models
         public void SetNewDeviceThread()
         {
             DeviceThread = new(new ThreadStart(Start));
+            DeviceThread.Name = Device_id + "_run";
         }
 
         public bool Connect()
@@ -113,16 +115,17 @@ namespace snsrpi.Models
         {
 
 
-            Logs.LogDebug("Creating File Writing Thread");
+            Logs.LogInformation("Creating File Writing Thread");
             CancellationTokenSource sourceFileThread = new();
             FileThread = new(WriteFiles);
+            FileThread.Name = Device_id + "_file";
             FileThread.Start(sourceFileThread.Token);
 
             var t = 0;
             DateTime startTime;
             double _t;
-            int sampleSize = 100;
-            var dt = 1 / sampleSize;
+            int sampleSize = Settings.Sample_rate;
+            double dt = 1.0 / sampleSize;
             int[] sample = Enumerable.Range(0, sampleSize).ToArray();
             DateTime timestamp;
             double accel_x;
@@ -135,13 +138,13 @@ namespace snsrpi.Models
                 foreach (int s in sample)
                 {
                     _t = t + s * dt;
-                    timestamp = startTime.Add(TimeSpan.FromSeconds(s * dt));
+
+                    timestamp = startTime.Add(TimeSpan.FromMilliseconds(s * dt * 1000));
                     accel_x = Math.Sin(_t);
                     accel_y = Math.Cos(_t);
                     accel_z = 5 * Math.Sin(_t);
                     DataBuffers.Enqueue(new VibrationData(timestamp, accel_x, accel_y, accel_z));
                 }
-
                 Thread.Sleep(TimeSpan.FromSeconds(1));
                 t++;
             }
@@ -194,42 +197,86 @@ namespace snsrpi.Models
 
         }
 
+        public void TempWrite(int limit, int samples)
+        {
+            // Total number of samples per file
+            var numSamples = samples;
+            int samplesWritten;
+            Console.WriteLine($"File thread started. Num samples = {numSamples}");
+            List<VibrationData> buffer = new();
+            int written = 0;
+            while (written < limit)
+            {
+                if (DataBuffers.TryDequeue(out VibrationData data))
+                {
+                    buffer.Add(data);
+                    written++;
+                    if (buffer.Count % 50 == 0)
+                        Console.WriteLine($"Samples collected = {buffer.Count}");
+                }
+
+                if (buffer.Count >= numSamples)
+                {
+                    //Write the files...
+                    Console.WriteLine("Writing files...");
+                    samplesWritten = Output.Write(buffer);
+                    if (samplesWritten > 0)
+                    {
+                        Logs.LogInformation("File write successful");
+                        buffer.Clear();
+                    }
+                    else
+                    {
+                        Logs.LogError("Error writing files. No samples written");
+                    }
+                    Thread.Sleep(TimeSpan.FromSeconds(60));
+                }
+            }
+        }
+
         public void WriteFiles(Object obj)
         {
             var token = (CancellationToken)obj;
             // Total number of samples per file
             var numSamples = Settings.Save_interval.TotalSeconds() * Settings.Sample_rate;
             int samplesWritten;
+            Console.WriteLine($"File thread started. Num samples = {numSamples}");
             List<VibrationData> buffer = new();
             while (!token.IsCancellationRequested)
             {
                 if (DataBuffers.TryDequeue(out VibrationData data))
+                {
                     buffer.Add(data);
+                    if (buffer.Count % 50 == 0)
+                        Console.WriteLine($"Samples collected = {buffer.Count}");
+                }
 
                 if (buffer.Count >= numSamples)
                 {
                     //Write the files...
-                    Logs.LogDebug("Writing files...");
+                    Console.WriteLine("Writing files...");
                     samplesWritten = Output.Write(buffer);
                     if (samplesWritten > 0)
                     {
-						Logs.LogInformation("File write successful");
-						buffer.Clear();
+                        Logs.LogInformation("File write successful");
+                        buffer.Clear();
                     }
                     else
                     {
                         Logs.LogError("Error writing files. No samples written");
                     }
+                    Thread.Sleep(TimeSpan.FromSeconds(60));
                 }
+
             }
 
             Logs.LogInformation("Cancellation request received: Writing remaining data and stopping file writes");
-			buffer = DataBuffers.ToList();
-			Output.Write(buffer);
-			DataBuffers.Clear();
+            buffer = DataBuffers.ToList();
+            Output.Write(buffer);
+            DataBuffers.Clear();
 
-			Logs.LogInformation("Final file written, cancelling file thread");
-			return;
+            Logs.LogInformation("Final file written, cancelling file thread");
+            return;
         }
 
         private AcquisitionSettings InitialiseSettings()
@@ -242,6 +289,7 @@ namespace snsrpi.Models
                 configPath = Path.Combine(configPath, configFileName);
                 if (File.Exists(configPath))
                 {
+                    Logs.LogInformation("Config file found. Loading settings...");
                     AcquisitionSettings settings = AcquisitionSettings.LoadFromFile(configPath);
                     if (outputDir != null)
                     {
@@ -251,7 +299,8 @@ namespace snsrpi.Models
                     return settings;
                 }
             }
-            return AcquisitionSettings.Create(500, "csv", "/home/jondufty/data");
+            Console.WriteLine("No config file found, creating default settings");
+            return AcquisitionSettings.Create(10, "csv", "/home/jondufty/data");
 
         }
 
@@ -260,6 +309,8 @@ namespace snsrpi.Models
             string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
             if (Directory.Exists(configPath))
                 configPath = Path.Combine(configPath, Device_id + "_config.json");
+            else
+                configPath = Path.Combine(Directory.GetCurrentDirectory(), Device_id + "_config.json");
             Logs.LogInformation($"Saving config to {configPath}");
             Settings.SaveToFile(configPath);
         }

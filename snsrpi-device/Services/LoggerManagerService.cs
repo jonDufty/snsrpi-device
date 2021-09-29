@@ -32,8 +32,8 @@ namespace snsrpi.Services
             DeviceName = System.Environment.GetEnvironmentVariable("DEVICE_NAME");
             CX = new();
             Logs = _logger;
-            Console.WriteLine("Trying CX API");
-            var loggers = CXUtils.List();  
+            // Console.WriteLine("Trying CX API");
+            // var loggers = CXUtils.List();  
 
             Logs.LogInformation("Creating cancellation token");
             GlobalSource = new();
@@ -42,15 +42,15 @@ namespace snsrpi.Services
             LoggerTokens = new(){
                 {"CX1_1901", new CancellationTokenSource()},
                 {"CX1_1902", new CancellationTokenSource()},
-                {"CX1_1903", new CancellationTokenSource()},
-                {"CX1_1904", new CancellationTokenSource()},
+                // {"CX1_1903", new CancellationTokenSource()},
+                // {"CX1_1904", new CancellationTokenSource()},
             };
 
             Loggers = new(){
                 {"CX1_1901", new Logger(true,"CX1_1901",_logger, LoggerTokens["CX1_1901"].Token)},
                 {"CX1_1902", new Logger(true,"CX1_1902",_logger, LoggerTokens["CX1_1902"].Token)},
-                {"CX1_1903", new Logger(true,"CX1_1903",_logger, LoggerTokens["CX1_1903"].Token)},
-                {"CX1_1904", new Logger(true,"CX1_1904",_logger, LoggerTokens["CX1_1904"].Token)},
+                // {"CX1_1903", new Logger(true,"CX1_1903",_logger, LoggerTokens["CX1_1903"].Token)},
+                // {"CX1_1904", new Logger(true,"CX1_1904",_logger, LoggerTokens["CX1_1904"].Token)},
             };
 
             Logs.LogInformation("Bootstrapping system...");
@@ -60,9 +60,6 @@ namespace snsrpi.Services
                 log_string += $"\n{device}";
             }
             Logs.LogInformation(log_string);
-
-            // Create timeer thread for sending regular heartbeats
-            // HeartbeatTimer = new Timer(Heartbeat, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
 
             _HttpClient = new();
 
@@ -111,14 +108,6 @@ namespace snsrpi.Services
         public Logger GetDevice(string deviceID)
         {
             return Loggers[deviceID];
-        }
-
-        public void Heartbeat(Object stateInfo)
-        {
-            Logs.LogDebug("Sending heartbeat...");
-            // Logs.LogInformation("Sending heartbeat");
-            // var response = _HttpClient.GetAsync("http://aws.heartbeat.endpoint").Result;
-            // Logs.LogDebug(response.ToString());            
         }
 
         public Health HealthCheck(){

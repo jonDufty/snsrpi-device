@@ -16,11 +16,12 @@ namespace snsrpi.Models
         public string outputDir;
         public string outputPrefix;
         public string fileExt;
+        public CultureInfo culture;
         public abstract int Write(List<VibrationData> data);
 
         public string GetFileName(VibrationData data)
         {
-            return outputPrefix + data.time.ToString("yyyy_MM_dd_hh_mm") + fileExt;
+            return outputPrefix + data.time.ToString("yyyy-MM-dd_HH-mm-ss") + fileExt;
 
         }
     }
@@ -32,15 +33,20 @@ namespace snsrpi.Models
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
             fileExt = ".csv";
+            culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+            culture.DateTimeFormat.ShortDatePattern = "yyyy-MM-dd";
+            culture.DateTimeFormat.LongTimePattern = "HH:mm:ss:ffffff";
         }
 
         public override int Write(List<VibrationData> data)
         {
+            Console.WriteLine("Writing data...");
+            Console.WriteLine($"#samples = {data.Count}");
             var filepath = Path.Combine(outputDir, GetFileName(data[0]));
             try
             {
                 using StreamWriter writer = new(filepath);
-                using CsvWriter csv = new(writer, CultureInfo.InvariantCulture);
+                using CsvWriter csv = new(writer, culture);
                 csv.WriteRecords(records: data);
             }
             catch
@@ -62,6 +68,8 @@ namespace snsrpi.Models
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
             fileExt = ".feather";
+            culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+            culture.DateTimeFormat.FullDateTimePattern = "yyyy-MM-dd_HH-mm-ss:ffffff";
         }
         public override int Write(List<VibrationData> data)
         {
