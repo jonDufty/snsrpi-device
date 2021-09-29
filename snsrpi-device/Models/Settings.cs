@@ -48,7 +48,7 @@ namespace snsrpi.Models
             }
             catch
             {
-                return Create(500, "csv", "/home/jondufty/data");
+                return Create(500, "csv", "./data");
             }
         }
 

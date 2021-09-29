@@ -14,249 +14,255 @@ using snsrpi.Services;
 
 namespace snsrpi.Models
 {
-	public class Logger
-	{
-		public string Device_id {get; set;}
-		public Thread DeviceThread {get; set;}
-		public Thread FileThread {get; set;}
-		public CXCom Cx { get; }
-		public CXDevice Device { get; }
-		public OutputData Output { get; set; }
-		public ConcurrentQueue<VibrationData> DataBuffers { get; }
-		public CancellationToken TokenDeviceThread {get; set;}
-		public AcquisitionSettings Settings {get; set;}
+    public class Logger
+    {
+        public string Device_id { get; set; }
+        public Thread DeviceThread { get; set; }
+        public Thread FileThread { get; set; }
+        public CXCom Cx { get; }
+        public CXDevice Device { get; }
+        public OutputData Output { get; set; }
+        public ConcurrentQueue<VibrationData> DataBuffers { get; }
+        public CancellationToken TokenDeviceThread { get; set; }
+        public AcquisitionSettings Settings { get; set; }
 
-		public bool IsActive {get; set;}
-		public bool Demo {get; set;}
+        public bool IsActive { get; set; }
+        public bool Demo { get; set; }
 
-		private readonly ILogger<LoggerManagerService> Logs;
+        private readonly ILogger<LoggerManagerService> Logs;
 
 
 
-		public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
-		{
-			Cx = new();
-			Device_id = device_id;
-			Device = null;
-			Settings = InitialiseSettings();
-			Output = new CSVOutput(Settings.Output_directory, device_id + "_");
-			DataBuffers = new();
-			DeviceThread = null;
-			FileThread = null;
-			TokenDeviceThread = token;
-			Logs = _logger;
-			IsActive = false;
-			Demo = demo;
-		}
+        public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
+        {
+            Cx = new();
+            Device_id = device_id;
+            Device = null;
+            Settings = InitialiseSettings();
+            Output = Settings.Output_type switch
+            {
+                "csv" => new CSVOutput(Settings.Output_directory, device_id + "_"),
+                "feather" => new FeatherOutput(Settings.Output_directory, device_id + "_"),
+                _ => new CSVOutput(Settings.Output_directory, device_id + "_"),
+            };
+            DataBuffers = new();
+            DataBuffers = new();
+            DeviceThread = null;
+            FileThread = null;
+            TokenDeviceThread = token;
+            Logs = _logger;
+            IsActive = false;
+            Demo = demo;
+        }
 
-		public Logger(CXCom _cx, CXDevice _device, InputData input)
-		{
-			Cx = _cx;
-			Device = _device;
-			switch (input.outputType)
-			{
-				case "csv":
-					Output = new CSVOutput(input.outputDirectory, "CX1_");
-					break;
-				case "feather":
-					Output = new FeatherOutput();
-					break;
-				default:
-					Output = new CSVOutput(input.outputDirectory, "CX1_");
-					break;
-			}
-			DataBuffers = new ();
-		}
+        public Logger(CXCom _cx, CXDevice _device, InputData input)
+        {
+            Cx = _cx;
+            Device = _device;
+            Output = input.outputType switch
+            {
+                "csv" => new CSVOutput(input.outputDirectory, "CX1_"),
+                "feather" => new FeatherOutput(Settings.Output_directory, "Device" + "_"),
+                _ => new CSVOutput(input.outputDirectory, "CX1_"),
+            };
+            DataBuffers = new();
+        }
 
-		public void SetNewDeviceThread()
-		{
-			DeviceThread = new(new ThreadStart(Start));
-		}
+        public void SetNewDeviceThread()
+        {
+            DeviceThread = new(new ThreadStart(Start));
+        }
 
-		public bool Connect()
-		{
-			try
-			{
-				Cx.Connect(Device);
-				CXCom.LoginStatus login = Cx.Login(CXCom.LoginUserID.Admin, "admin");
-				if (login != CXCom.LoginStatus.Ok)
-				{
-					Logs.LogWarning("Could not log into device: {0}", login);
-					return false;
-				}
-				return true;
-			}
-			catch (Exception e)
-			{
-				Logs.LogInformation($"{e}");
-				return false;
-			}
-		}
+        public bool Connect()
+        {
+            try
+            {
+                Cx.Connect(Device);
+                CXCom.LoginStatus login = Cx.Login(CXCom.LoginUserID.Admin, "admin");
+                if (login != CXCom.LoginStatus.Ok)
+                {
+                    Logs.LogWarning("Could not log into device: {0}", login);
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logs.LogInformation($"{e}");
+                return false;
+            }
+        }
 
-		public void Disconnect()
-		{
-			if (Cx.IsConnected())
-			{
-				Cx.Disconnect();
-			}
-			else
-			{
-				Console.WriteLine("No device is connected");
-			}
-		}
+        public void Disconnect()
+        {
+            if (Cx.IsConnected())
+                Cx.Disconnect();
+            else
+                Console.WriteLine("No device is connected");
+        }
 
-		public void Start()
-		{
-			Logs.LogInformation("Starting demo Acqusition...");
-			// IsActive = true;
-			if (Demo)
-				RunDemo();
-		}
+        public void Start()
+        {
+            Logs.LogInformation("Starting demo Acqusition...");
+            IsActive = true;
+            if (Demo)
+                RunDemo();
+        }
 
-		public void RunDemo()
-		{
-			
+        public void RunDemo()
+        {
 
-			Logs.LogDebug("Creating File Writing Thread");
-			CancellationTokenSource source = new();
-			FileThread = new(WriteFiles);
-			FileThread.Start(source.Token);
-			
-			var dt = 0.01;
-			var t = 0;
-			double _t;
-			int sampleSize = 1000;
-			int[] sample = Enumerable.Range(0,sampleSize).ToArray();
-			List<string> timestamps;
-			List<double> accel_x;
-			List<double> accel_y;
-			List<double> accel_z;
 
-			while(!TokenDeviceThread.IsCancellationRequested)
-			{
-				timestamps = new();
-				accel_x = new();
-				accel_y = new();
-				accel_z = new();
+            Logs.LogDebug("Creating File Writing Thread");
+            CancellationTokenSource sourceFileThread = new();
+            FileThread = new(WriteFiles);
+            FileThread.Start(sourceFileThread.Token);
 
-				foreach(int s in sample)
-				{
-					_t = t + s*dt;
-					timestamps.Add(_t.ToString());
-					accel_x.Add(Math.Sin(_t));
-					accel_y.Add(Math.Cos(_t));
-					accel_z.Add(5*Math.Sin(_t));
-				}
+            var t = 0;
+            DateTime startTime;
+            double _t;
+            int sampleSize = 100;
+            var dt = 1 / sampleSize;
+            int[] sample = Enumerable.Range(0, sampleSize).ToArray();
+            DateTime timestamp;
+            double accel_x;
+            double accel_y;
+            double accel_z;
 
-				Thread.Sleep(TimeSpan.FromSeconds(60));
-				t ++;
-				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
+            while (!TokenDeviceThread.IsCancellationRequested)
+            {
+                startTime = DateTime.Now;
+                foreach (int s in sample)
+                {
+                    _t = t + s * dt;
+                    timestamp = startTime.Add(TimeSpan.FromSeconds(s * dt));
+                    accel_x = Math.Sin(_t);
+                    accel_y = Math.Cos(_t);
+                    accel_z = 5 * Math.Sin(_t);
+                    DataBuffers.Enqueue(new VibrationData(timestamp, accel_x, accel_y, accel_z));
+                }
 
-			}
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+                t++;
+            }
 
-			Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
-			// IsActive = false;
-			source.Cancel();
+            Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
+            sourceFileThread.Cancel();
+        }
+        public void StartAcquisition()
+        {
+            if (!Cx.IsConnected())
+            {
+                Console.WriteLine("No Device is connected. Attempting reconnect");
+                var result = Connect();
+                if (!result)
+                {
+                    Console.WriteLine("Cancelling Acquisition");
+                }
+            }
 
-			// Console.
+            if (!Cx.StreamEnable())
+            {
+                Console.WriteLine("Could not enable streaming");
+                return;
+            }
 
-		}
-		public void StartAcquisition()
-		{
-			int timeLimit = 100;
+            //Create stopwatch timer for now
+            while (!TokenDeviceThread.IsCancellationRequested)
+            {
 
-			if (!Cx.IsConnected())
-			{
-				Console.WriteLine("No Device is connected. Attempting reconnect");
-				var result = Connect();
-				if (!result)
-				{
-					Console.WriteLine("Cancelling Acquisition");
-				}
-			}
+                List<CXCom.Sample> samples = Cx.GetSamples();
+                foreach (var s in samples)
+                {
+                    //buffer.AppendSample(s.TimeStamp, s.Acceleration_X, s.Acceleration_Y, s.Acceleration_Z);
+                    if (s.AccelerationValid)
+                    {
+                        DataBuffers.Enqueue(new VibrationData(
+                            s.TimeStamp,
+                            s.Acceleration_X,
+                            s.Acceleration_Y,
+                            s.Acceleration_Z
+                        ));
+                    }
+                }
+                Thread.Sleep(1000);
+            }
+        }
 
-			if (!Cx.StreamEnable())
-			{
-				Console.WriteLine("Could not enable streaming");
-				return;
-			}
+        public void StopAcquisition()
+        {
 
-			//Create stopwatch timer for now
-			Stopwatch timer = new();
-			timer.Start();
-			var timestamps = new List<string>();
-			var accel_x = new List<double>();
-			var accel_y = new List<double>();
-			var accel_z = new List<double>();
-			//TODO Change hardcoded time limit
-			
-			while (timer.Elapsed.TotalSeconds < timeLimit)
-			{
-				
-				List<CXCom.Sample> samples = Cx.GetSamples();
-				foreach (var s in samples)
-				{
-					//buffer.AppendSample(s.TimeStamp, s.Acceleration_X, s.Acceleration_Y, s.Acceleration_Z);
-					if (s.AccelerationValid)
-					{
-						timestamps.Add(s.TimeStamp.ToString("MM/dd/yyyy HH:mm:ss.ffffff"));
-						accel_x.Add(s.Acceleration_X);
-						accel_y.Add(s.Acceleration_Y);
-						accel_z.Add(s.Acceleration_Z);
-					}
-				}
-				Thread.Sleep(1000);
-				//break;
+        }
 
-				DataBuffers.Enqueue(new VibrationData(timestamps, accel_x, accel_y, accel_z));
-			}
-		}
-
-		public void StopAcquisition()
-		{
-
-		}
-
-		public void WriteFiles(Object obj){
-			var token = (CancellationToken)obj;
-			VibrationData data;
+        public void WriteFiles(Object obj)
+        {
+            var token = (CancellationToken)obj;
+            // Total number of samples per file
+            var numSamples = Settings.Save_interval.TotalSeconds() * Settings.Sample_rate;
+            int samplesWritten;
+            List<VibrationData> buffer = new();
             while (!token.IsCancellationRequested)
-			{
-				if(DataBuffers.TryDequeue(out data))
-				{
-					//Write the files...
-					Logs.LogDebug("Writing files...");	
-					Output.Write(data);
-				}
-			}
-			Logs.LogInformation("Cancellation request received: Stopping file writes");
-		}
+            {
+                if (DataBuffers.TryDequeue(out VibrationData data))
+                    buffer.Add(data);
 
-		private AcquisitionSettings InitialiseSettings()
-		{
-			string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
-			if (configPath != null)
-			{
-				var configFileName = Device_id + "_config.json";
-				configPath = Path.Combine(configPath, configFileName);
-				if (File.Exists(configPath))
-				{
-					AcquisitionSettings settings = AcquisitionSettings.LoadFromFile(configPath);
-					return settings;
-				}
-			}
-			return AcquisitionSettings.Create(500, "csv", "/home/jondufty/data"); 
+                if (buffer.Count >= numSamples)
+                {
+                    //Write the files...
+                    Logs.LogDebug("Writing files...");
+                    samplesWritten = Output.Write(buffer);
+                    if (samplesWritten > 0)
+                    {
+						Logs.LogInformation("File write successful");
+						buffer.Clear();
+                    }
+                    else
+                    {
+                        Logs.LogError("Error writing files. No samples written");
+                    }
+                }
+            }
 
-		}
+            Logs.LogInformation("Cancellation request received: Writing remaining data and stopping file writes");
+			buffer = DataBuffers.ToList();
+			Output.Write(buffer);
+			DataBuffers.Clear();
 
-		public void SaveSettings()
-		{
-			string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
-			if (Directory.Exists(configPath))
-				configPath = Path.Combine(configPath, Device_id + "_config.json");
-				Logs.LogInformation($"Saving config to {configPath}");
-				Settings.SaveToFile(configPath);
-		}
+			Logs.LogInformation("Final file written, cancelling file thread");
+			return;
+        }
 
-	}
+        private AcquisitionSettings InitialiseSettings()
+        {
+            string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
+            string outputDir = System.Environment.GetEnvironmentVariable("OUTPUT_DATA_DIR");
+            if (configPath != null)
+            {
+                var configFileName = Device_id + "_config.json";
+                configPath = Path.Combine(configPath, configFileName);
+                if (File.Exists(configPath))
+                {
+                    AcquisitionSettings settings = AcquisitionSettings.LoadFromFile(configPath);
+                    if (outputDir != null)
+                    {
+                        settings.Output_directory = outputDir;
+                        settings.SaveToFile(configPath);
+                    }
+                    return settings;
+                }
+            }
+            return AcquisitionSettings.Create(500, "csv", "/home/jondufty/data");
+
+        }
+
+        public void SaveSettings()
+        {
+            string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
+            if (Directory.Exists(configPath))
+                configPath = Path.Combine(configPath, Device_id + "_config.json");
+            Logs.LogInformation($"Saving config to {configPath}");
+            Settings.SaveToFile(configPath);
+        }
+
+    }
 }

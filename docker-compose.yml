@@ -9,7 +9,8 @@ services:
       "DEVICE_CONFIG_DIR" : "/config"
       # "ASPNETCORE_ENVIRONMENT" : "Development"
       "ASPNETCORE_URLS" : "http://+:5000"
-    networks: 
+    # network_mode: host 
+    networks:
       - iot-network
   
   iot:
@@ -24,8 +25,17 @@ services:
     ports: 
       - 443:443
       - 8443:8443
-    networks: 
+    # network_mode: host
+    networks:
       - iot-network
+
+  backend:
+    image: backend:latest
+    ports: 
+      - 8000:8000
+    environment:
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_ACCESS_KEY_ID
     
 networks: 
   iot-network:

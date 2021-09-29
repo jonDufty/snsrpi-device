@@ -108,6 +108,7 @@ if __name__ == '__main__':
     connect_future = mqtt_connection.connect()
     connect_future.result()
     print("Connected!")
+    time.sleep(30) #Wait for other service to spin up
 
     device.set_global_shadow(shadow_client)
     device.get_healthcheck()

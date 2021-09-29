@@ -45,7 +45,10 @@
             "cwd": "${workspaceFolder}/snsrpi-device",
             "stopAtEntry": false,
             "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "DEVICE_DATA_DIR": "/home/jondufty/data",
+                "DEVICE_NAME": "local_device",
+                "DEVICE_CONFIG_DIR": "${workspaceFolder}/snsrpi-device/config"
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"

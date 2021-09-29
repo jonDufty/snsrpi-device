@@ -15,7 +15,14 @@ namespace snsrpi.Models
     {
         public string outputDir;
         public string outputPrefix;
-        public abstract bool Write(VibrationData data);
+        public string fileExt;
+        public abstract int Write(List<VibrationData> data);
+
+        public string GetFileName(VibrationData data)
+        {
+            return outputPrefix + data.time.ToString("yyyy_MM_dd_hh_mm") + fileExt;
+
+        }
     }
 
     public class CSVOutput : OutputData
@@ -24,47 +31,47 @@ namespace snsrpi.Models
         {
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
+            fileExt = ".csv";
         }
-        
-        public override bool Write(VibrationData data)
+
+        public override int Write(List<VibrationData> data)
         {
-            var filepath = Path.Combine(outputDir, GetFileName(data));
-            using(var writer = new StreamWriter(filepath))
-            using(var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            var filepath = Path.Combine(outputDir, GetFileName(data[0]));
+            try
             {
-                var records = new List<object>();
-                
-                for(int i=0; i<data.accel_x.Count; i++)
-                {
-                    i++;
-                    records.Add(new {time=data.time[i], x = data.accel_x[i], y=data.accel_y[i], z=data.accel_z[i]});                    
-                }
-                csv.WriteRecords(records);
+                using StreamWriter writer = new(filepath);
+                using CsvWriter csv = new(writer, CultureInfo.InvariantCulture);
+                csv.WriteRecords(records: data);
             }
-            
-            
-            return true;
+            catch
+            {
+                Console.WriteLine("File write failed");
+                return 0;
+            }
+            return data.Count;
         }
 
-        public string GetFileName(VibrationData data)
-        {
-            return outputPrefix + data.time[0].ToString() + ".csv";
-            // DateTime timestamp = DateTime.Parse(data.time[0].ToString());
-            // return outputPrefix + timestamp.ToString("yyyy_MM_dd_hh_mm") + ".csv";
-
-        }
+        
     }
 
     public class FeatherOutput : OutputData
     {
-        public override bool Write(VibrationData data)
+
+        public FeatherOutput(string _outputDir, string _outputPrefix)
         {
-            string filepath = "./";
+            outputDir = _outputDir;
+            outputPrefix = _outputPrefix;
+            fileExt = ".feather";
+        }
+        public override int Write(List<VibrationData> data)
+        {
+            string filepath = GetFileName(data[0]);
+            
             using (var writer = new FeatherWriter(filepath))
             {
-                writer.AddColumn("time", data.time);
+                writer.AddColumn("time", data);
             }
-            return true;
+            return 1;
         }
     }
 }
