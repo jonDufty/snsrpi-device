@@ -16,7 +16,7 @@ namespace snsrpi.Models
         public string outputDir;
         public string outputPrefix;
         public string fileExt;
-        public CultureInfo culture;
+        
         public abstract int Write(List<VibrationData> data);
 
         public string GetFileName(VibrationData data)
@@ -28,6 +28,7 @@ namespace snsrpi.Models
 
     public class CSVOutput : OutputData
     {
+        public CultureInfo culture;
         public CSVOutput(string _outputDir, string _outputPrefix)
         {
             outputDir = _outputDir;
@@ -40,9 +41,9 @@ namespace snsrpi.Models
 
         public override int Write(List<VibrationData> data)
         {
-            Console.WriteLine("Writing data...");
-            Console.WriteLine($"#samples = {data.Count}");
             var filepath = Path.Combine(outputDir, GetFileName(data[0]));
+            Console.WriteLine($"Writing data to {filepath}");
+            Console.WriteLine($"#samples = {data.Count}");
             try
             {
                 using StreamWriter writer = new(filepath);
@@ -52,7 +53,7 @@ namespace snsrpi.Models
             catch
             {
                 Console.WriteLine("File write failed");
-                return 0;
+                return -1;
             }
             return data.Count;
         }
@@ -62,24 +63,48 @@ namespace snsrpi.Models
 
     public class FeatherOutput : OutputData
     {
+        public string DatetimeFormat;
 
         public FeatherOutput(string _outputDir, string _outputPrefix)
         {
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
             fileExt = ".feather";
-            culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
-            culture.DateTimeFormat.FullDateTimePattern = "yyyy-MM-dd_HH-mm-ss:ffffff";
+            DatetimeFormat = "yyyy-MM-dd_HH-mm-ss:ffffff";
         }
         public override int Write(List<VibrationData> data)
         {
-            string filepath = GetFileName(data[0]);
-            
-            using (var writer = new FeatherWriter(filepath))
-            {
-                writer.AddColumn("time", data);
+            var filepath = Path.Combine(outputDir, GetFileName(data[0]));
+            Console.WriteLine($"Writing data to {filepath}");
+
+            // Build column data
+            List<string> time = new();
+            List<double> accel_x = new();
+            List<double> accel_y = new();
+            List<double> accel_z = new();
+            foreach(var row in data)
+            {   
+                time.Add(row.time.ToString(DatetimeFormat));
+                accel_x.Add(row.accel_x);
+                accel_y.Add(row.accel_y);
+                accel_z.Add(row.accel_z);
             }
-            return 1;
+            
+            try{
+
+                using (var writer = new FeatherWriter(filepath, WriteMode.Eager))
+                {
+                    writer.AddColumn<string>("time", time);
+                    writer.AddColumn<double>("accel_x", accel_x);
+                    writer.AddColumn<double>("accel_y", accel_y);
+                    writer.AddColumn<double>("accel_z", accel_z);
+                }
+                return data.Count;
+            } catch {
+                Console.WriteLine("Error writing file...");
+                return -1;
+            }
         }
+
     }
 }

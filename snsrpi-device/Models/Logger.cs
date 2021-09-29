@@ -234,7 +234,7 @@ namespace snsrpi.Models
             }
         }
 
-        public void WriteFiles(Object obj)
+        public void WriteFiles(object obj)
         {
             var token = (CancellationToken)obj;
             // Total number of samples per file
@@ -300,7 +300,7 @@ namespace snsrpi.Models
                 }
             }
             Console.WriteLine("No config file found, creating default settings");
-            return AcquisitionSettings.Create(10, "csv", "/home/jondufty/data");
+            return AcquisitionSettings.Create(10, "feather", "/home/jondufty/data");
 
         }
 
