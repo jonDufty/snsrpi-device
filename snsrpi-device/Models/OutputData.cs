@@ -16,6 +16,7 @@ namespace snsrpi.Models
         public string outputDir;
         public string outputPrefix;
         public string fileExt;
+        public int Decimate;
 
         public abstract int Write(List<VibrationData> data);
 
@@ -29,11 +30,12 @@ namespace snsrpi.Models
     public class CSVOutput : OutputData
     {
         public CultureInfo culture;
-        public CSVOutput(string _outputDir, string _outputPrefix)
+        public CSVOutput(string _outputDir, string _outputPrefix, int decimate = 1)
         {
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
             fileExt = ".csv";
+            Decimate = decimate;
             culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
             culture.DateTimeFormat.ShortDatePattern = "yyyy-MM-dd";
             culture.DateTimeFormat.LongTimePattern = "HH:mm:ss:ffffff";
@@ -63,10 +65,11 @@ namespace snsrpi.Models
     {
         public string DatetimeFormat;
 
-        public FeatherOutput(string _outputDir, string _outputPrefix)
+        public FeatherOutput(string _outputDir, string _outputPrefix, int decimate = 1)
         {
             outputDir = _outputDir;
             outputPrefix = _outputPrefix;
+            Decimate = decimate;
             fileExt = ".feather";
             DatetimeFormat = "yyyy-MM-dd_HH-mm-ss:ffffff";
         }

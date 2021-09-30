@@ -73,6 +73,10 @@ namespace snsrpi.Services
             }
             Logs.LogInformation(log_string);
 
+            if(!demo){
+                Console.WriteLine("Autostarting acqusition for CX1_1901");
+                StartDevice("CX1_1901");
+            }
         }
 
         public List<string> ListDevices()

@@ -3,15 +3,18 @@ version: "3.7"
 services:
   device:
     image: device:latest
+    volumes:
+      - ~/data:/data
     ports:
       - 5000:5000
     environment:
       "DEVICE_CONFIG_DIR" : "/config"
-      # "ASPNETCORE_ENVIRONMENT" : "Development"
       "ASPNETCORE_URLS" : "http://+:5000"
-    # network_mode: host 
-    networks:
-      - iot-network
+      "OUTPUT_DATA_DIR": "/data"
+      "DEMO": "false"
+    network_mode: host 
+    # networks:
+    #   - iot-network
   
   iot:
     image: iot:latest
@@ -25,9 +28,9 @@ services:
     ports: 
       - 443:443
       - 8443:8443
-    # network_mode: host
-    networks:
-      - iot-network
+    network_mode: host
+    # networks:
+    #   - iot-network
 
   backend:
     image: backend:latest
