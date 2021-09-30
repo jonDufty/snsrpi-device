@@ -56,17 +56,26 @@ namespace snsrpi.Models
             Console.WriteLine($"Demo = {demo}");
         }
 
-        public Logger(CXCom _cx, CXDevice _device, InputData input)
+        public Logger(CXDevice _device, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
-            Cx = _cx;
+            Logs = _logger;
+            Cx = new();
+            Device_id = _device.Name;
             Device = _device;
-            Output = input.outputType switch
+            Settings = InitialiseSettings();
+            Output = Settings.Output_type switch
             {
-                "csv" => new CSVOutput(input.outputDirectory, "CX1_"),
-                "feather" => new FeatherOutput(Settings.Output_directory, "Device" + "_"),
-                _ => new CSVOutput(input.outputDirectory, "CX1_"),
+                "csv" => new CSVOutput(Settings.Output_directory, Device_id + "_"),
+                "feather" => new FeatherOutput(Settings.Output_directory, Device_id + "_"),
+                _ => new CSVOutput(Settings.Output_directory, Device_id + "_"),
             };
             DataBuffers = new();
+            DeviceThread = null;
+            FileThread = null;
+            TokenDeviceThread = token;
+            IsActive = false;
+            Demo = false;
+            Console.WriteLine($"Demo = {Demo}");
         }
 
         public void SetNewDeviceThread()
@@ -105,16 +114,16 @@ namespace snsrpi.Models
 
         public void Start()
         {
-            Logs.LogInformation("Starting demo Acqusition...");
             IsActive = true;
             if (Demo)
                 RunDemo();
+            else
+                StartAcquisition();
         }
 
         public void RunDemo()
         {
-
-
+            Logs.LogInformation("Starting demo Acqusition...");
             Logs.LogInformation("Creating File Writing Thread");
             CancellationTokenSource sourceFileThread = new();
             FileThread = new(WriteFiles);
@@ -152,8 +161,10 @@ namespace snsrpi.Models
             Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
             sourceFileThread.Cancel();
         }
+
         public void StartAcquisition()
         {
+            Console.WriteLine("Starting Acquisition");
             if (!Cx.IsConnected())
             {
                 Console.WriteLine("No Device is connected. Attempting reconnect");
@@ -161,14 +172,22 @@ namespace snsrpi.Models
                 if (!result)
                 {
                     Console.WriteLine("Cancelling Acquisition");
+                    IsActive = false;
                 }
             }
 
             if (!Cx.StreamEnable())
             {
                 Console.WriteLine("Could not enable streaming");
+                IsActive = false;
                 return;
             }
+
+            Logs.LogInformation("Creating File Writing Thread");
+            CancellationTokenSource sourceFileThread = new();
+            FileThread = new(WriteFiles);
+            FileThread.Name = Device_id + "_file";
+            FileThread.Start(sourceFileThread.Token);
 
             //Create stopwatch timer for now
             while (!TokenDeviceThread.IsCancellationRequested)
@@ -188,8 +207,11 @@ namespace snsrpi.Models
                         ));
                     }
                 }
-                Thread.Sleep(1000);
+                Thread.Sleep(50);
             }
+
+            Logs.LogInformation("Cancellation Request received. Sending file thread cancel");
+            sourceFileThread.Cancel();
         }
 
         public void StopAcquisition()

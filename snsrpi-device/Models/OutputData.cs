@@ -16,7 +16,7 @@ namespace snsrpi.Models
         public string outputDir;
         public string outputPrefix;
         public string fileExt;
-        
+
         public abstract int Write(List<VibrationData> data);
 
         public string GetFileName(VibrationData data)
@@ -57,8 +57,6 @@ namespace snsrpi.Models
             }
             return data.Count;
         }
-
-        
     }
 
     public class FeatherOutput : OutputData
@@ -82,15 +80,16 @@ namespace snsrpi.Models
             List<double> accel_x = new();
             List<double> accel_y = new();
             List<double> accel_z = new();
-            foreach(var row in data)
-            {   
+            foreach (var row in data)
+            {
                 time.Add(row.time.ToString(DatetimeFormat));
                 accel_x.Add(row.accel_x);
                 accel_y.Add(row.accel_y);
                 accel_z.Add(row.accel_z);
             }
-            
-            try{
+
+            try
+            {
 
                 using (var writer = new FeatherWriter(filepath, WriteMode.Eager))
                 {
@@ -100,11 +99,12 @@ namespace snsrpi.Models
                     writer.AddColumn<double>("accel_z", accel_z);
                 }
                 return data.Count;
-            } catch {
+            }
+            catch
+            {
                 Console.WriteLine("Error writing file...");
                 return -1;
             }
         }
-
     }
 }

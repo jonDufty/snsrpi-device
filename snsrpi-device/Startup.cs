@@ -30,11 +30,13 @@ namespace snsrpi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
+            // Determine if demo or not
+            string demoEnv = System.Environment.GetEnvironmentVariable("DEMO");
+            var demo = (demoEnv != "false") ? true : false;
+            
             services.AddControllers();
             var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<LoggerManagerService>();
-            var service = new LoggerManagerService(true, logger);
-            // Console.WriteLine($"Settings: Offline = {Configuration["Offline"]}");
+            var service = new LoggerManagerService(demo, logger);
             services.AddSingleton<ILoggerManager>(service);
             services.AddSwaggerGen(c =>
             {
