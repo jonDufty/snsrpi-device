@@ -26,12 +26,12 @@ namespace snsrpi.Models
         public CancellationToken TokenDeviceThread { get; set; }
         public AcquisitionSettings Settings { get; set; }
 
+
         public bool IsActive { get; set; }
         public bool Demo { get; set; }
 
+        private readonly int DefaultSample = 2000;
         private readonly ILogger<LoggerManagerService> Logs;
-
-
 
         public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
@@ -40,10 +40,11 @@ namespace snsrpi.Models
             Device_id = device_id;
             Device = null;
             Settings = InitialiseSettings();
+            var decimate = (int)DefaultSample / Settings.Sample_rate;
             Output = Settings.Output_type switch
             {
-                "csv" => new CSVOutput(Settings.Output_directory, device_id + "_"),
-                "feather" => new FeatherOutput(Settings.Output_directory, device_id + "_"),
+                "csv" => new CSVOutput(Settings.Output_directory, device_id + "_", decimate),
+                "feather" => new FeatherOutput(Settings.Output_directory, device_id + "_", decimate),
                 _ => new CSVOutput(Settings.Output_directory, device_id + "_"),
             };
             DataBuffers = new();
@@ -267,11 +268,7 @@ namespace snsrpi.Models
             while (!token.IsCancellationRequested)
             {
                 if (DataBuffers.TryDequeue(out VibrationData data))
-                {
                     buffer.Add(data);
-                    if (buffer.Count % 50 == 0)
-                        Console.WriteLine($"Samples collected = {buffer.Count}");
-                }
 
                 if (buffer.Count >= numSamples)
                 {

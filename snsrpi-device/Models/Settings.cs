@@ -19,7 +19,6 @@ namespace snsrpi.Models
         public string Output_directory { get; set; }
         public FileUploadSettings File_upload { get; set; }
         public SaveIntervalSettings Save_interval { get; set; }
-
         public static AcquisitionSettings Create(int sample, string outputType, string directory)
         {
             FileUploadSettings file_upload = new(true, "http://localhost:6000");
