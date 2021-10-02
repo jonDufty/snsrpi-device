@@ -41,12 +41,7 @@ namespace snsrpi.Models
             Device = null;
             Settings = InitialiseSettings();
             var decimate = (int)DefaultSample / Settings.Sample_rate;
-            Output = Settings.Output_type switch
-            {
-                "csv" => new CSVOutput(Settings.Output_directory, device_id + "_", decimate),
-                "feather" => new FeatherOutput(Settings.Output_directory, device_id + "_", decimate),
-                _ => new CSVOutput(Settings.Output_directory, device_id + "_"),
-            };
+            Output = null;
             DataBuffers = new();
             DataBuffers = new();
             DeviceThread = null;
@@ -64,12 +59,7 @@ namespace snsrpi.Models
             Device_id = _device.Name;
             Device = _device;
             Settings = InitialiseSettings();
-            Output = Settings.Output_type switch
-            {
-                "csv" => new CSVOutput(Settings.Output_directory, Device_id + "_"),
-                "feather" => new FeatherOutput(Settings.Output_directory, Device_id + "_"),
-                _ => new CSVOutput(Settings.Output_directory, Device_id + "_"),
-            };
+            Output = null;
             DataBuffers = new();
             DeviceThread = null;
             FileThread = null;
@@ -115,6 +105,14 @@ namespace snsrpi.Models
 
         public void Start()
         {
+            // Initialise output settings
+            Output = Settings.Output_type switch
+            {
+                "csv" => new CSVOutput(Settings.Output_directory, Device_id + "_"),
+                "feather" => new FeatherOutput(Settings.Output_directory, Device_id + "_"),
+                _ => new CSVOutput(Settings.Output_directory, Device_id + "_"),
+            };            
+            
             IsActive = true;
             if (Demo)
                 RunDemo();
