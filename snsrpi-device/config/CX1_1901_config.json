@@ -1,0 +1,1 @@
+{"Sample_rate":100,"Output_type":"csv","Offline_mode":false,"Output_directory":"/home/jondufty/data","File_upload":{"Active":true,"Endpoint":"http://localhost:6000"},"Save_interval":{"Unit":"second","Interval":30}}

@@ -2,6 +2,44 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug (select script from list of sh files)",
+            "cwd": "${workspaceFolder}",
+            "program": "${command:SelectScriptName}",
+            "args": []
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "env": {
+                "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com",
+                "DEVICE_ENDPOINT": "localhost:5000",
+                "PRIVATE_KEY": "iot/certs/private.pem.key",
+                "ROOT_CA": "iot/certs/Amazon-root-CA-1.pem",
+                "DEVICE_CERT": "iot/certs/device.pem.crt",
+                "DEVICE_NAME": "local_device"
+            }
+        },
+        {
+            "name": "Python: iot/main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/iot/main.py",
+            "console": "integratedTerminal",
+            "env": {
+                "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com",
+                "DEVICE_ENDPOINT": "localhost:5000",
+                "PRIVATE_KEY": "iot/certs/private.pem.key",
+                "ROOT_CA": "iot/certs/Amazon-root-CA-1.pem",
+                "DEVICE_CERT": "iot/certs/device.pem.crt",
+                "DEVICE_NAME": "local_device"
+            }
+        },
+        {
             // Use IntelliSense to find out which attributes exist for C# debugging
             // Use hover for the description of the existing attributes
             // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md
@@ -14,13 +52,11 @@
             "args": [],
             "cwd": "${workspaceFolder}/snsrpi-device",
             "stopAtEntry": false,
-            // Enable launching a web browser when ASP.NET Core starts. For more information: https://aka.ms/VSCode-CS-LaunchJson-WebBrowser
-            "serverReadyAction": {
-                "action": "openExternally",
-                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-            },
             "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "OUTPUT_DATA_DIR": "/home/jondufty/data",
+                "DEVICE_NAME": "local_device",
+                "DEVICE_CONFIG_DIR": "${workspaceFolder}/snsrpi-device/config",
             },
             "sourceFileMap": {
                 "/Views": "${workspaceFolder}/Views"

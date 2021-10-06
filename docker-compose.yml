@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  device:
+    image: device:latest
+    volumes:
+      - ~/data:/data
+    ports:
+      - 5000:5000
+    environment:
+      "DEVICE_CONFIG_DIR" : "/config"
+      "ASPNETCORE_URLS" : "http://+:5000"
+      "OUTPUT_DATA_DIR": "/data"
+      "DEMO": "false"
+    network_mode: host 
+    # networks:
+    #   - iot-network
+  
+  iot:
+    image: iot:latest
+    environment: 
+      "AWS_IOT_ENDPOINT": "a15ouonmzs9j6v-ats.iot.ap-southeast-2.amazonaws.com"
+      "DEVICE_ENDPOINT": "device:5000"
+      "PRIVATE_KEY": "/src/certs/private.pem.key"
+      "ROOT_CA": "/src/certs/Amazon-root-CA-1.pem"
+      "DEVICE_CERT": "/src/certs/device.pem.crt"
+      "DEVICE_NAME": "local_device"
+    ports: 
+      - 443:443
+      - 8443:8443
+    network_mode: host
+    # networks:
+    #   - iot-network
+
+  backend:
+    image: backend:latest
+    ports: 
+      - 8000:8000
+    environment:
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_ACCESS_KEY_ID
+    
+networks: 
+  iot-network:

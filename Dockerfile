@@ -9,6 +9,7 @@ RUN dotnet restore
 
 # copy everything else and build app
 COPY snsrpi-device/ .
+COPY snsrpi-device/config /config
 WORKDIR /src
 RUN dotnet publish -c release -o /app
 

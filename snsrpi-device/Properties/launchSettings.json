@@ -17,7 +17,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "testaspnet": {
+    "snsrpi": {
       "commandName": "Project",
       "dotnetRunMessages": "true",
       "launchBrowser": true,

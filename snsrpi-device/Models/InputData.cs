@@ -2,7 +2,7 @@
 using System.IO;
 using Newtonsoft.Json;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
 	public class InputData
 	{
@@ -21,7 +21,7 @@ namespace snsrpi
 
 			DateTime currentDate = DateTime.Now.Date;
 			string cwd = Directory.GetCurrentDirectory();
-			outputDirectory = Path.Combine(cwd, $"CX1_Data_{currentDate.ToString("yyyyMMdd")}/");
+			outputDirectory = Path.Combine(cwd, $"CX1_Data_{currentDate:yyyyMMdd}/");
 
 
 		}

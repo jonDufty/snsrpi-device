@@ -8,19 +8,17 @@ using System.Threading.Tasks;
 using Sensr.CX;
 using Sensr.Utils;
 
-namespace snsrpi
+namespace snsrpi.Models
 {
     public class CXUtils
     {
         public static List<CXDevice> List()
         {
-            CXCom cx = new CXCom();
-            string search = "";
-
-         
+            CXCom cx = new();
+            string search = "interface=ethernet";         
 
             //Placeholder list
-            List<CXDevice> devs = new List<CXDevice>();
+            List<CXDevice> devs = new();
 
             try
             {
