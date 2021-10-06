@@ -30,7 +30,7 @@ namespace snsrpi.Models
         public bool IsActive { get; set; }
         public bool Demo { get; set; }
 
-        private readonly int DefaultSample = 2000;
+        private readonly int DEFAULT_SAMPLE = 2000;
         private readonly ILogger<LoggerManagerService> Logs;
 
         public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
@@ -40,7 +40,6 @@ namespace snsrpi.Models
             Device_id = device_id;
             Device = null;
             Settings = InitialiseSettings();
-            var decimate = (int)DefaultSample / Settings.Sample_rate;
             Output = null;
             DataBuffers = new();
             DataBuffers = new();
@@ -54,6 +53,7 @@ namespace snsrpi.Models
 
         public Logger(CXDevice _device, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
+            
             Logs = _logger;
             Cx = new();
             Device_id = _device.Name;
@@ -260,34 +260,52 @@ namespace snsrpi.Models
             var token = (CancellationToken)obj;
             // Total number of samples per file
             var numSamples = Settings.Save_interval.TotalSeconds() * Settings.Sample_rate;
+            var decimate = DEFAULT_SAMPLE / Settings.Sample_rate;
             int samplesWritten;
-            Console.WriteLine($"File thread started. Num samples = {numSamples}");
+            Logs.LogInformation($"File thread started. #samples per file: {numSamples}");
             List<VibrationData> buffer = new();
+            int i = 0;
+            int retries;
             while (!token.IsCancellationRequested)
             {
-                if (DataBuffers.TryDequeue(out VibrationData data))
-                    buffer.Add(data);
+                if (DataBuffers.TryDequeue(out VibrationData data)){
+                    if (i % decimate == 0)
+                        buffer.Add(data); //Only add every n-th data point based on sample rate
+                    i++;
+                }
 
                 if (buffer.Count >= numSamples)
                 {
                     //Write the files...
-                    Console.WriteLine("Writing files...");
+                    retries = 0; //Limit retries of writing file before clearing buffer
+                    Logs.LogDebug("Writing files...");
                     samplesWritten = Output.Write(buffer);
                     if (samplesWritten > 0)
                     {
                         Logs.LogInformation("File write successful");
                         buffer.Clear();
+                        i = 0;
+                        retries = 0;
+                    }
+                    else if (retries > 5) 
+                    {
+                        Logs.LogError("Number of retries exceeded for file write. Clearing buffer. May need to kill program");
+                        buffer.Clear();
+                        retries = 0;
                     }
                     else
                     {
                         Logs.LogError("Error writing files. No samples written");
+                        retries++;
                     }
-                    Thread.Sleep(TimeSpan.FromSeconds(60));
+                    Thread.Sleep(TimeSpan.FromSeconds(60)); //If file size is <60s probably remove this.
                 }
 
             }
 
             Logs.LogInformation("Cancellation request received: Writing remaining data and stopping file writes");
+
+            // Graceful exit - Write remaining buffer to list and write to file
             buffer = DataBuffers.ToList();
             Output.Write(buffer);
             DataBuffers.Clear();
