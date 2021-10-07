@@ -110,7 +110,7 @@ Each option is discussed below
 
 Regardless of which option you go with. The applications expect several input parameters in the form of environment variables
 
-*** SNSRPI / C# Environment Variables ***
+***SNSRPI / C# Environment Variables***
 
 | ENV_VAR | Description | Type | Example |
 |---------|---------------------|------|---------|
@@ -120,7 +120,7 @@ Regardless of which option you go with. The applications expect several input pa
 |DEVICE_CONFIG_DIR| Directory to look for device config json files. If it deosn't exist, default settings are used | str | /home/userprofile/config |
 |ASPNETCORE_URLS|Use to specify listening ports/urls (mainly for production so it doesn't listen on port 80)|str| "https://+:5000"|
 
-*** IOT / Python Environment Variables ***
+***IOT / Python Environment Variables***
 
 | ENV_VAR | Description | Type | Example |
 |---------|---------------------|------|---------|
