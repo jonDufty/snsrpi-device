@@ -10,6 +10,10 @@ using snsrpi.Models;
 
 namespace snsrpi.Interfaces
 {
+    
+    /// <summary>
+    /// Interface for accessing LoggerManagerService with API controllers
+    /// </summary>
     public interface ILoggerManager
     {
         List<string> ListDevices();
@@ -17,7 +21,6 @@ namespace snsrpi.Interfaces
         bool CheckDevice(string id);
         void StartDevice(string id);
         void StopDevice(string id);
-        void StopAllDevices();
         Health HealthCheck();
 
     }

@@ -19,10 +19,6 @@ namespace snsrpi
         {
 
             var host = CreateHostBuilder(args).Build();
-
-            // Init logger manager before starting host
-            // InitDataAcquisition();
-
             host.Run();
         }
 
@@ -33,22 +29,5 @@ namespace snsrpi
                     webBuilder.UseStartup<Startup>();
                 });
 
-        public static LoggerManagerService InitDataAcquisition() 
-        {
-            var loggerFactory = LoggerFactory.Create(
-                logging => {
-                    logging.AddConsole();
-                    logging.AddDebug();
-                }
-            );
-
-            var manager = new LoggerManagerService(true, loggerFactory.CreateLogger<LoggerManagerService>());
-            manager.StartDevice(manager.ListDevices()[0]);
-            Thread.Sleep(5000);
-            manager.StopAllDevices();
-
-            return manager;
-
-        }
     }
 }

@@ -25,32 +25,6 @@ namespace snsrpi.Controllers
             _loggerManager = loggerManager;
         }
 
-        [HttpPost("{id}/start")]
-        public IActionResult Post(string id)
-        {
-            if (!_loggerManager.CheckDevice(id)) return NotFound();
-            _logger.LogInformation("Device found...");
-            _loggerManager.StartDevice(id);
-            var result = new Dictionary<string,string>();
-            result.Add("result","Success");
-            result.Add("message",$"Device {id} successfully stopped");   
-
-            return new JsonResult(result);
-        }
-
-        [HttpPost("{id}/stop")]
-        public IActionResult Stop(string id)
-        {
-            var result = new Dictionary<string,string>();
-
-            if (!_loggerManager.CheckDevice(id)) return NotFound();
-            
-            _loggerManager.StopDevice(id);
-            result.Add("result","Success");
-            result.Add("message",$"Device {id} successfully stopped");            
-            return new JsonResult(result);
-        }
-
         [HttpGet]
         public IEnumerable<string> List()
         {

@@ -1,5 +1,6 @@
 import json
 import os
+from awsiot.iotshadow import IotShadowClient
 import requests
 import threading
 import logging
@@ -14,6 +15,9 @@ DEVICE_NAME = os.environ["DEVICE_NAME"]
 
 
 class Device:
+    """Main device class that contains key mqtt functions and variables. Most operations
+    are abstracted away through this class
+    """
 
     def __init__(self, device_name, device_endpoint) -> None:
         self.auth = Auth()
@@ -27,32 +31,57 @@ class Device:
         self.global_shadow = None
         self.sensor_shadows = []
 
-    def set_global_shadow(self, shadow_client):
+    def set_global_shadow(self, shadow_client: IotShadowClient):
+        """Sets global shadow after instantiation of class
+
+        Args:
+            shadow_client (IotShadowClient): AWS shadow client, created in main.py
+        """
         self.global_shadow = GlobalShadowHandler(
             shadow_client, self.name, "global", self.device_endpoint, self.get_healthcheck)
 
     def set_mqtt(self, mqtt):
+        """Setts MQTT connection after instantiation
+
+        Args:
+            mqtt (mqtt_connection_builder): AWS mqtt builder object
+        """
         self.mqtt = mqtt
 
     def enable_heartbeat(self):
+        """Starts heartbeat thread to send periodic state updates
+        """
         self.disable_heartbeat_event.clear()
         self.heartbeat_thread.start()
 
     def disable_heartbeat(self):
+        """Disables heartbeat thread
+        """
         self.disable_heartbeat_event.set()
 
     def delete_shadows(self):
+        """Used for graceful exit. Disables heartbeat and deletes all shadows associated with
+        thing.
+        """
         self.disable_heartbeat()
         self.global_shadow.delete_shadow()
         for s in self.sensor_shadows:
             s.delete_shadow()
 
     def heartbeat(self, timer=60):
+        """Periodically checks the snsrpi/api/health endpoint for device state
+        and updates global shadow
+
+        Args:
+            timer (int, optional): Time interval between heartbeats. Defaults to 60.
+        """
         while not self.disable_heartbeat_event.is_set():
             self.get_healthcheck()
             time.sleep(timer)
 
     def get_healthcheck(self):
+        """Hits snsrpi/api/health for device state and updates state
+        """
         url = f"http://{self.device_endpoint}/api/health"
         logging.info(f"Getting heartbeat from {url}...")
 

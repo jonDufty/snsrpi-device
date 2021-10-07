@@ -30,12 +30,15 @@ namespace snsrpi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Determine if demo or not
+            // Determine if demo or not based on environment setting
             string demoEnv = System.Environment.GetEnvironmentVariable("DEMO");
-            var demo = (demoEnv != "false") ? true : false;
+            var demo = demoEnv != "false";
             
             services.AddControllers();
+            // Initialise logging object to pass down to class
             var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger<LoggerManagerService>();
+            
+            //Initialise LoggerManager as a singleton. Make sure it is created at startup 
             var service = new LoggerManagerService(demo, logger);
             services.AddSingleton<ILoggerManager>(service);
             services.AddSwaggerGen(c =>
@@ -49,12 +52,12 @@ namespace snsrpi
         {
             if (env.IsDevelopment())
             {
-                Console.WriteLine("ENV = Development");
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "testaspnet v1"));
             }
 
+            // Can uncomment this if you want. As this API is used only locally we don't need HTTPS
             // app.UseHttpsRedirection();
 
             app.UseRouting();

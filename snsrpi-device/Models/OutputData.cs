@@ -20,6 +20,11 @@ namespace snsrpi.Models
 
         public abstract int Write(List<VibrationData> data);
 
+        /// <summary>
+        /// Determins file name based on first data point/timestamp 
+        /// </summary>
+        /// <param name="data">Data point to based filename on</param>
+        /// <returns>filename</returns>
         public string GetFileName(VibrationData data)
         {
             return outputPrefix + data.time.ToString("yyyy-MM-dd_HH-mm-ss") + fileExt;
@@ -27,6 +32,9 @@ namespace snsrpi.Models
         }
     }
 
+    /// <summary>
+    /// Class for writing out csv files 
+    /// </summary>
     public class CSVOutput : OutputData
     {
         public CultureInfo culture;
@@ -36,11 +44,17 @@ namespace snsrpi.Models
             outputPrefix = _outputPrefix;
             fileExt = ".csv";
             Decimate = decimate;
+            // Change the culture to format dates the way we want
             culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
             culture.DateTimeFormat.ShortDatePattern = "yyyy-MM-dd";
             culture.DateTimeFormat.LongTimePattern = "HH:mm:ss:ffffff";
         }
 
+        /// <summary>
+        /// Writes out csv files 
+        /// </summary>
+        /// <param name="data">List of data objects</param>
+        /// <returns>Number of samples written to file</returns>
         public override int Write(List<VibrationData> data)
         {
             var filepath = Path.Combine(outputDir, GetFileName(data[0]));
@@ -61,6 +75,10 @@ namespace snsrpi.Models
         }
     }
 
+    /// <summary>
+    /// Class for writing out feather outputs. Feather is a lightweight binary
+    /// format that works well with Python and Pandas
+    /// </summary>
     public class FeatherOutput : OutputData
     {
         public string DatetimeFormat;
@@ -73,6 +91,11 @@ namespace snsrpi.Models
             fileExt = ".feather";
             DatetimeFormat = "yyyy-MM-dd_HH-mm-ss:ffffff";
         }
+        /// <summary>
+        /// Writes out files 
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns> Number of samples written </returns>
         public override int Write(List<VibrationData> data)
         {
             var filepath = Path.Combine(outputDir, GetFileName(data[0]));
@@ -83,6 +106,8 @@ namespace snsrpi.Models
             List<double> accel_x = new();
             List<double> accel_y = new();
             List<double> accel_z = new();
+            
+            // Convert rows to columns
             foreach (var row in data)
             {
                 time.Add(row.time.ToString(DatetimeFormat));

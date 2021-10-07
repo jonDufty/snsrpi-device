@@ -16,23 +16,42 @@ namespace snsrpi.Models
 {
     public class Logger
     {
+        // Main identifier for device
         public string Device_id { get; set; }
+        // Thread reference for individual device
         public Thread DeviceThread { get; set; }
+        
+        // Thread ref for file writing thread 
         public Thread FileThread { get; set; }
+        
+        // CXCom interface used for operating device
         public CXCom Cx { get; }
+        //snsr CXDevice object
         public CXDevice Device { get; }
+        // Output data object for writing out files
         public OutputData Output { get; set; }
+        // Thread safe queue for storing and writing out data
         public ConcurrentQueue<VibrationData> DataBuffers { get; }
+        // Cancellation token passed down from parent functions
         public CancellationToken TokenDeviceThread { get; set; }
+        // Device settings
         public AcquisitionSettings Settings { get; set; }
-
-
+        // Flag for whether device is running or not
         public bool IsActive { get; set; }
+        // Flag for demo mode
         public bool Demo { get; set; }
 
         private readonly int DEFAULT_SAMPLE = 2000;
+        // Logging object
         private readonly ILogger<LoggerManagerService> Logs;
-
+        
+        /// <summary>
+        /// Constructor for Logger class
+        /// </summary>
+        /// <param name="demo"> Use demo mode or not </param>
+        /// <param name="device_id"> Device id </param>
+        /// <param name="_logger"> In built logging service</param>
+        /// <param name="token"> Cancellation token for device to be used to stop the thread </param>
         public Logger(bool demo, string device_id, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
             Logs = _logger;
@@ -40,17 +59,22 @@ namespace snsrpi.Models
             Device_id = device_id;
             Device = null;
             Settings = InitialiseSettings();
-            Output = null;
+            Output = null; //Create this on StartAcqusition
             DataBuffers = new();
-            DataBuffers = new();
-            DeviceThread = null;
-            FileThread = null;
+            DeviceThread = null; //Create this on StartAcqusition
+            FileThread = null; //Create this on StartAcqusition
             TokenDeviceThread = token;
             IsActive = false;
             Demo = demo;
             Console.WriteLine($"Demo = {demo}");
         }
 
+        /// <summary>
+        /// Constructor used when not in demo mode and passing in a CXDevice object instead
+        /// </summary>
+        /// <param name="_device">CXDevice object. Returned when searching for device using CXUtils.List</param>
+        /// <param name="_logger">.NET logging object</param>
+        /// <param name="token">Cancellation token</param>
         public Logger(CXDevice _device, ILogger<LoggerManagerService> _logger, CancellationToken token)
         {
             
@@ -69,12 +93,19 @@ namespace snsrpi.Models
             Console.WriteLine($"Demo = {Demo}");
         }
 
+        /// <summary>
+        /// On start, creates a new thread each time
+        /// </summary>
         public void SetNewDeviceThread()
         {
             DeviceThread = new(new ThreadStart(Start));
             DeviceThread.Name = Device_id + "_run";
         }
 
+        /// <summary>
+        /// Attempts to connect to device
+        /// </summary>
+        /// <returns>bool indicating success or not</returns>
         public bool Connect()
         {
             try
@@ -105,7 +136,7 @@ namespace snsrpi.Models
 
         public void Start()
         {
-            // Initialise output settings
+            // Initialise output settings. This allows for settings to be updated on runtime
             Output = Settings.Output_type switch
             {
                 "csv" => new CSVOutput(Settings.Output_directory, Device_id + "_"),
@@ -113,6 +144,7 @@ namespace snsrpi.Models
                 _ => new CSVOutput(Settings.Output_directory, Device_id + "_"),
             };            
             
+            //Set isactive flag to true and run either real or demo acqusition
             IsActive = true;
             if (Demo)
                 RunDemo();
@@ -120,10 +152,15 @@ namespace snsrpi.Models
                 StartAcquisition();
         }
 
+        /// <summary>
+        /// Generates fake data for demo acqusition. Behviour is the same as real acqusition otherwise
+        /// </summary>
         public void RunDemo()
         {
             Logs.LogInformation("Starting demo Acqusition...");
             Logs.LogInformation("Creating File Writing Thread");
+            
+            // Create a new thread to write files as data gets added to the buffer
             CancellationTokenSource sourceFileThread = new();
             FileThread = new(WriteFiles);
             FileThread.Name = Device_id + "_file";
@@ -140,6 +177,8 @@ namespace snsrpi.Models
             double accel_y;
             double accel_z;
 
+            // Loop until we get a cancellation request. This is a more elegant way of doing an infinite loop for 
+            // a thread
             while (!TokenDeviceThread.IsCancellationRequested)
             {
                 startTime = DateTime.Now;
@@ -163,6 +202,7 @@ namespace snsrpi.Models
 
         public void StartAcquisition()
         {
+            // Try to connect to device
             Console.WriteLine("Starting Acquisition");
             if (!Cx.IsConnected())
             {
@@ -175,6 +215,7 @@ namespace snsrpi.Models
                 }
             }
 
+            // Need to enable streaming before acqusition can be run
             if (!Cx.StreamEnable())
             {
                 Console.WriteLine("Could not enable streaming");
@@ -182,20 +223,23 @@ namespace snsrpi.Models
                 return;
             }
 
+            // Create separate thread for writing data tot files
             Logs.LogInformation("Creating File Writing Thread");
+
+            // Pass cancellation token to function to be able to cancel function from here
             CancellationTokenSource sourceFileThread = new();
             FileThread = new(WriteFiles);
             FileThread.Name = Device_id + "_file";
             FileThread.Start(sourceFileThread.Token);
 
-            //Create stopwatch timer for now
+            // Loop until we recieve a cancellation event
             while (!TokenDeviceThread.IsCancellationRequested)
             {
 
                 List<CXCom.Sample> samples = Cx.GetSamples();
+                // Append each sample to thread safe queue
                 foreach (var s in samples)
                 {
-                    //buffer.AppendSample(s.TimeStamp, s.Acceleration_X, s.Acceleration_Y, s.Acceleration_Z);
                     if (s.AccelerationValid)
                     {
                         DataBuffers.Enqueue(new VibrationData(
@@ -213,61 +257,30 @@ namespace snsrpi.Models
             sourceFileThread.Cancel();
         }
 
-        public void StopAcquisition()
-        {
-
-        }
-
-        public void TempWrite(int limit, int samples)
-        {
-            // Total number of samples per file
-            var numSamples = samples;
-            int samplesWritten;
-            Console.WriteLine($"File thread started. Num samples = {numSamples}");
-            List<VibrationData> buffer = new();
-            int written = 0;
-            while (written < limit)
-            {
-                if (DataBuffers.TryDequeue(out VibrationData data))
-                {
-                    buffer.Add(data);
-                    written++;
-                    if (buffer.Count % 50 == 0)
-                        Console.WriteLine($"Samples collected = {buffer.Count}");
-                }
-
-                if (buffer.Count >= numSamples)
-                {
-                    //Write the files...
-                    Console.WriteLine("Writing files...");
-                    samplesWritten = Output.Write(buffer);
-                    if (samplesWritten > 0)
-                    {
-                        Logs.LogInformation("File write successful");
-                        buffer.Clear();
-                    }
-                    else
-                    {
-                        Logs.LogError("Error writing files. No samples written");
-                    }
-                    Thread.Sleep(TimeSpan.FromSeconds(60));
-                }
-            }
-        }
-
+        /// <summary>
+        /// Concurrent thread that takes samples from buffer as they are added and writes out files
+        /// </summary>
+        /// <param name="obj">Cancellation token</param>
         public void WriteFiles(object obj)
         {
             var token = (CancellationToken)obj;
+            
             // Total number of samples per file
             var numSamples = Settings.Save_interval.TotalSeconds() * Settings.Sample_rate;
             var decimate = DEFAULT_SAMPLE / Settings.Sample_rate;
             int samplesWritten;
+            
             Logs.LogInformation($"File thread started. #samples per file: {numSamples}");
+            
+            //Create new buffer to send to Output Data object
             List<VibrationData> buffer = new();
             int i = 0;
             int retries;
+
+            // Run until we get cancel request from parent function
             while (!token.IsCancellationRequested)
             {
+                // Try dequeue is a safe was to try pop next element from the queue
                 if (DataBuffers.TryDequeue(out VibrationData data)){
                     if (i % decimate == 0)
                         buffer.Add(data); //Only add every n-th data point based on sample rate
@@ -277,7 +290,7 @@ namespace snsrpi.Models
                 if (buffer.Count >= numSamples)
                 {
                     //Write the files...
-                    retries = 0; //Limit retries of writing file before clearing buffer
+                    retries = 0; // Limit retries of writing file before clearing buffer
                     Logs.LogDebug("Writing files...");
                     samplesWritten = Output.Write(buffer);
                     if (samplesWritten > 0)
@@ -314,8 +327,14 @@ namespace snsrpi.Models
             return;
         }
 
+        /// <summary>
+        /// Initialises acqusition settings. Looks for predefined config file, otherwise
+        /// uses default settings
+        /// </summary>
+        /// <returns>new AcqusitionSettings objects</returns>
         private AcquisitionSettings InitialiseSettings()
         {
+            // Check environment for path definitions
             string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
             string outputDir = System.Environment.GetEnvironmentVariable("OUTPUT_DATA_DIR");
             if (configPath != null)
@@ -335,10 +354,14 @@ namespace snsrpi.Models
                 }
             }
             Console.WriteLine("No config file found, creating default settings");
-            return AcquisitionSettings.Create(10, "feather", "/home/jondufty/data");
+            // Current default is to write to current directory. This is not recommended
+            return AcquisitionSettings.Create(100, "csv", Directory.GetCurrentDirectory());
 
         }
 
+        /// <summary>
+        /// Write settings to config file
+        /// </summary>
         public void SaveSettings()
         {
             string configPath = System.Environment.GetEnvironmentVariable("DEVICE_CONFIG_DIR");
@@ -346,6 +369,7 @@ namespace snsrpi.Models
                 configPath = Path.Combine(configPath, Device_id + "_config.json");
             else
                 configPath = Path.Combine(Directory.GetCurrentDirectory(), Device_id + "_config.json");
+            
             Logs.LogInformation($"Saving config to {configPath}");
             Settings.SaveToFile(configPath);
         }

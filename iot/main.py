@@ -15,12 +15,6 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 from Device import Device
 
-# This sample uses the Message Broker for AWS IoT to send and receive messages
-# through an MQTT connection. On startup, the device connects to the server,
-# subscribes to a topic, and begins publishing messages to that topic.
-# The device should receive those same messages back from the message broker,
-# since it is subscribed to that same topic.
-
 AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
 
 # io.init_logging()
@@ -28,15 +22,28 @@ AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
 received_count = 0
 stop_recording_event = threading.Event()
 
+
+
 # Callback when connection is accidentally lost.
-
-
 def on_connection_interrupted(connection, error, **kwargs):
+    """Callback for connection interrup. AWS example
+
+    Args:
+        connection ([type]): [description]
+        error ([type]): [description]
+    """
     print("Connection interrupted. error: {}".format(error))
 
 
 # Callback when an interrupted connection is re-established.
 def on_connection_resumed(connection, return_code, session_present, **kwargs):
+    """Callback for connection resume event. Standard AWS example
+
+    Args:
+        connection (mqqt_connection): 
+        return_code (int): Return code
+        session_present (bool): If there is an existing session
+    """
     print("Connection resumed. return_code: {} session_present: {}".format(
         return_code, session_present))
 
@@ -50,6 +57,11 @@ def on_connection_resumed(connection, return_code, session_present, **kwargs):
 
 
 def on_resubscribe_complete(resubscribe_future):
+    """Callback for resubscribe event. Standard AWS example
+
+    Args:
+        resubscribe_future ([type]): [description]
+    """
     resubscribe_results = resubscribe_future.result()
     print("Resubscribe results: {}".format(resubscribe_results))
 
@@ -58,18 +70,18 @@ def on_resubscribe_complete(resubscribe_future):
             sys.exit("Server rejected resubscribe to topic: {}".format(topic))
 
 
-def on_delta_update(delta: iotshadow.ShadowDeltaUpdatedEvent):
-    print("Delta received...")
-    print(delta.state)
-
 # Callback when the subscribed topic receives a message
 def signal_handler(signal, frame):
+    """Singnal handler for SIGINT/SIGTERM for graceful shutdown
+
+    """
     print("Terminate Signal Recieved")
     stop_recording_event.set()
 
 
 if __name__ == '__main__':
 
+    # Initialise
     AWS_IOT_ENDPOINT = os.environ["AWS_IOT_ENDPOINT"]
     DEVICE_ENDPOINT = os.environ["DEVICE_ENDPOINT"]
     DEVICE_NAME = os.environ["DEVICE_NAME"]
@@ -83,8 +95,11 @@ if __name__ == '__main__':
     client_bootstrap = io.ClientBootstrap(event_loop_group, host_resolver)
 
     proxy_options = None
+
+    # Initialise device object. This has most handler functions abstracted away
     device = Device(DEVICE_NAME, DEVICE_ENDPOINT)
 
+    # Initialise mqtt connection object. This does all the talking essentially
     mqtt_connection = mqtt_connection_builder.mtls_from_path(
         endpoint=AWS_IOT_ENDPOINT,
         port=443,
@@ -100,21 +115,25 @@ if __name__ == '__main__':
         http_proxy_options=proxy_options)
 
     device.set_mqtt(mqtt_connection)
+
+    # Iot shadow service client
     shadow_client = iotshadow.IotShadowClient(mqtt_connection)
 
     print(
         f"Connecting to {AWS_IOT_ENDPOINT} with client ID '{device.name}'...")
 
     connect_future = mqtt_connection.connect()
-    connect_future.result()
+    connect_future.result() #Wait for connection result
     print("Connected!")
-    time.sleep(30) #Wait for other service to spin up
+    time.sleep(30) #Wait for other service to spin up otherwise we risk hitting an empty endpoint
 
+    # Conduct initial healthcheck to intialise global state/shadow
     device.set_global_shadow(shadow_client)
     device.get_healthcheck()
     device.global_shadow.set_state(device.global_shadow.local_state, update_index=True)
     device.global_shadow.update_state(override_desired=True)
-    
+
+    # Iterrate through sensors in state and create individual shadows/states 
     sensors = device.global_shadow.local_state['sensors']
     for s in sensors:
         id = s['sensor_id']
@@ -125,9 +144,12 @@ if __name__ == '__main__':
         result = shadow.get_or_update_sensor_settings()
         if result['error']:
             print(f'failed to get initial settings of sensor {id}')
+        # Need to call update state outside of call back functions otherwise we risk creating thread dead-lock
+        # and the program hangs
         shadow.update_state(override_desired=True)
         device.sensor_shadows.append(shadow)
 
+    # Enable periodic heartbest
     device.enable_heartbeat()
 
     # Listen continuously/wait until stop signal received

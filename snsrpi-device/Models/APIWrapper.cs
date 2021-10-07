@@ -9,6 +9,10 @@ using Sensr.Utils;
 
 namespace snsrpi.Models
 {
+    /// <summary>
+    /// This is just a legacy of the original API example provided by SNSR.
+    /// Used mainly as an example 
+    /// </summary>
     public class APIWrapper
     {
         

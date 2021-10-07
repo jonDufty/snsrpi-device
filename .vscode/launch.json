@@ -2,12 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "bashdb",
+            "name": "Python: AWS init",
+            "type": "python",
             "request": "launch",
-            "name": "Bash-Debug (select script from list of sh files)",
-            "cwd": "${workspaceFolder}",
-            "program": "${command:SelectScriptName}",
-            "args": []
+            "program": "${workspaceFolder}/aws_iot_init.py",
+            "console": "integratedTerminal",
+            "args": ["--thing-name", "test", "--thing-group-name", "vibration_sydney"]
         },
         {
             "name": "Python: Current File",

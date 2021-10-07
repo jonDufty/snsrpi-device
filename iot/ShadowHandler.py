@@ -9,6 +9,8 @@ from requests.api import request
 
 
 class ShadowHandler(ABC):
+    """Abstract class for shadow handler class
+    """
 
     def __init__(self, client: IotShadowClient, thing, shadow, health) -> None:
         super().__init__()
@@ -23,31 +25,70 @@ class ShadowHandler(ABC):
         self.get_healthcheck = health
 
     def on_shadow_rejected(self, response: ErrorResponse):
+        """Callback function for shadow error response. 
+        Logs error response if any shadow request was rejected
+
+        Args:
+            response (ErrorResponse): AWS Error response object
+        """
         logging.error(
             f"Get Shadow message rejected:\ncode: {response.code}\nmessage: {response.message}")
 
     def on_get_shadow_accepted(self, response: GetShadowResponse):
+        """Callback function for get/accepted shadow response. Currently does nothing
+
+        Args:
+            response (GetShadowResponse): AWS Response object
+        """
         print("Get shadow successful")
         print(response.state)
 
     def on_delete_shadow_accepted(self, response: DeleteShadowResponse):
+        """Callback function for delete/accepted shadow response. Currently does nothing
+
+        Args:
+            response (DeleteShadowResponse): AWS Response object
+        """
         print(f"Shadow successfully deleted")
 
     def on_update_shadow_accepted(self, response: UpdateShadowResponse):
+        """Callback function for update/accepted shadow response. Currently does nothing
+
+        Args:
+            response (UpdateShadowResponse): AWS response object
+        """
         print(f"Update shadow successful")
 
     def on_update_shadow_delta(self, response: ShadowDeltaUpdatedEvent):
+        """Callback function for update/delta shadow response. Currently does nothing
+
+        Args:
+            response (ShadowDeltaUpdatedEvent): AWS Delta object containing state
+        """
         print(f"Delta received")
         print(response.state)
 
-    def set_state(self, state, override=False):
+    def set_state(self, state):
+        """Updates local state
+
+        Args:
+            state (dict): new state
+        """
         self.local_state.update(state)
 
     @abstractmethod
     def subscribe_to_shadow_topics(self):
+        """Subscribe to relevant shadow topics. Must be specified per sub class
+        """
         pass
 
     def update_state(self, override_desired=False):
+        """Updates shadow with local state stored within class.
+        Typically should only ever update 'reported' part of the state
+
+        Args:
+            override_desired (bool, optional): If specified, will update 'desired' part of state as well as 'reported'. Defaults to False.
+        """
         print(f"{self.shadow_request['shadow_name']}:Sending new state")
         new_state = ShadowState(reported=self.local_state)
         if(override_desired):
@@ -66,6 +107,8 @@ class ShadowHandler(ABC):
             logging.error(e)
 
     def delete_shadow(self):
+        """Deletes named shadow. Used for graceful shutdown
+        """
         try:
             future = self.client.publish_delete_named_shadow(
                 request=DeleteNamedShadowRequest(**self.shadow_request),
@@ -78,6 +121,11 @@ class ShadowHandler(ABC):
             logging.error(f"Error: {e}")
 
     def on_future_callback(self, future):
+        """Callback function for publishing messages
+
+        Args:
+            future (Future): AWS future object. future.result() will wait for a result and raise an error if result is bad
+        """
         try:
             future.result()
             print(
@@ -88,6 +136,10 @@ class ShadowHandler(ABC):
 
 
 class GlobalShadowHandler(ShadowHandler):
+    """Handler class for global shadow.
+    Does not expect to receive state changes. Predominantly used for publishing state
+    """
+
     def __init__(self, client: IotShadowClient, thing, shadow, device_endpoint, health) -> None:
         super().__init__(client, thing, shadow, health)
         self.device_endpoint = device_endpoint
@@ -97,16 +149,16 @@ class GlobalShadowHandler(ShadowHandler):
             "sensors": []
         }
 
-        # self.update_state(override_desired=True)
         self.subscribe_to_shadow_topics()
-        self.sensor_index = {}
+        self.sensor_index = {}  # dictionary for faster indexing of sensor_id
 
-    def set_state(self, state, override=False, update_index=False):
-        super().set_state(state, override=override)
+    def set_state(self, state, update_index=False):
         if update_index:
             self.__index_state__()
 
     def __index_state__(self):
+        """Creates dictionary of local state for faster indexing
+        """
         index = {}
         i = 0
         for i in range(len(self.local_state['sensors'])):
@@ -149,16 +201,6 @@ class GlobalShadowHandler(ShadowHandler):
             update_rejected_future.result()
             print("Successfully subscribed to DELETE topics")
 
-            # update_delta_future, _ = self.client.subscribe_to_named_shadow_delta_updated_events(
-            #     request=NamedShadowDeltaUpdatedSubscriptionRequest(
-            #         **self.shadow_request),
-            #     qos=mqtt.QoS.AT_LEAST_ONCE,
-            #     callback=self.on_update_shadow_delta
-            # )
-
-            # update_delta_future.result()
-            # print("Successfully subscribed to DELTA topics")
-
         except Exception as e:
             logging.error("Error in subscribing to key topics")
             logging.error(f"Error: {e}")
@@ -187,6 +229,10 @@ class GlobalShadowHandler(ShadowHandler):
 
 
 class SensorShadowHandler(ShadowHandler):
+    """Shadow handler for individual sensor states
+
+    """
+
     def __init__(self, client: IotShadowClient, thing, shadow, sensor_name, endpoint, health) -> None:
         super().__init__(client, thing, shadow, health)
         self.sensor_name = sensor_name
@@ -197,21 +243,18 @@ class SensorShadowHandler(ShadowHandler):
         }
 
         self.subscribe_to_shadow_topics()
-        # self.update_state(override_desired=True)
 
     def set_state(self, key, state):
         self.local_state[key] = state
         print(
             f"{self.shadow_request['shadow_name']}:Updated state for {key} to {state}")
 
-    # TODO handlers
-    # TODO subscriptions
     def subscribe_to_shadow_topics(self):
         print(
             f"Subscribing to shadow topic {self.shadow_request['shadow_name']}")
         try:
-            # Subscribe to GET topics
 
+            # Subscribe to GET topics
             # Subscribe to DELETE topics
             delete_accepted_future, _ = self.client.subscribe_to_delete_named_shadow_accepted(
                 request=DeleteNamedShadowSubscriptionRequest(
@@ -270,13 +313,18 @@ class SensorShadowHandler(ShadowHandler):
         self.update_state()
         return
 
-        # CHeck valid
-        # Check source
-        # Select handler
-        # CHeck return
-
     def change_sensor_running(self, active: bool):
-        print(f"{self.shadow_request['shadow_name']}:Sending start/stop to sensor")
+        """Used to start/stop the sensor. Calls the POST snsr/api/device/{id} endpoint to
+        operate device
+
+        Args:
+            active (bool): Wheter the device is running or not
+
+        Returns:
+            dict: Response object contianing success or error message
+        """
+        print(
+            f"{self.shadow_request['shadow_name']}:Sending start/stop to sensor")
 
         url = f"http://{self.device_endpoint}/api/devices/{self.sensor_name}"
         method = "POST"  # default
@@ -287,7 +335,6 @@ class SensorShadowHandler(ShadowHandler):
             result = resp.json()
 
             self.set_state("active", active)
-            # self.update_state()
             result = {
                 "status": "Success",
                 "error": None
@@ -303,7 +350,17 @@ class SensorShadowHandler(ShadowHandler):
         return result
 
     def get_or_update_sensor_settings(self, settings=None):
-        print(f"{self.shadow_request['shadow_name']}:Invoking function get_settings")
+        """Calls snsr/api/settings endpoint. Used for both updating and fetching device settings
+
+        Args:
+            settings (dict, optional): JSON object for settings. If defined, request will update settings, 
+            otherwise request will fetch current settings. Defaults to None.
+
+        Returns:
+            dict: Response object contianing success or error messages
+        """
+        print(
+            f"{self.shadow_request['shadow_name']}:Invoking function get_settings")
 
         method = "GET"  # default
         body = None
@@ -318,7 +375,6 @@ class SensorShadowHandler(ShadowHandler):
             result = resp.json()
 
             self.set_state("settings", result)
-            # self.update_state()
             result = {
                 "status": "Success",
                 "error": None

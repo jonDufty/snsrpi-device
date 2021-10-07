@@ -7,6 +7,9 @@ using Sensr.Utils;
 namespace snsrpi.Models
 {
 
+    /// <summary>
+    /// Basic class for holding vibration data
+    /// </summary>
     public class VibrationData
     {
         public DateTime time {get;}

@@ -12,6 +12,11 @@ namespace snsrpi.Models
 {
     public class CXUtils
     {
+        /// <summary>
+        /// Calls SNSR dll to list all connected devices. Only works for ethernet connected
+        /// devices, not usb
+        /// </summary>
+        /// <returns>List of CXDevice objects found</returns>
         public static List<CXDevice> List()
         {
             CXCom cx = new();

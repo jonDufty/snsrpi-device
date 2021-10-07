@@ -10,6 +10,9 @@ using snsrpi.Services;
 
 namespace snsrpi.Models
 {
+    /// <summary>
+    /// Health Check object. Contains basic device state 
+    /// </summary>
     public class Health
     {
         public string Device_id {get;}
