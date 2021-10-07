@@ -110,6 +110,8 @@ Each option is discussed below
 
 Regardless of which option you go with. The applications expect several input parameters in the form of environment variables
 
+*** SNSRPI / C# Environment Variables ***
+
 | ENV_VAR | Description | Type | Example |
 |---------|---------------------|------|---------|
 |DEVICE_NAME| Name of device, should match AWS IoT Thing name| str | local_device|
@@ -117,6 +119,8 @@ Regardless of which option you go with. The applications expect several input pa
 |DEMO| If true, does not look for devices and creates fake devices for development (useful if you don't have a sensor nearby). If this is not specified, default is assume Demo=true | bool | true/false |
 |DEVICE_CONFIG_DIR| Directory to look for device config json files. If it deosn't exist, default settings are used | str | /home/userprofile/config |
 |ASPNETCORE_URLS|Use to specify listening ports/urls (mainly for production so it doesn't listen on port 80)|str| "https://+:5000"|
+
+*** IOT / Python Environment Variables ***
 
 | ENV_VAR | Description | Type | Example |
 |---------|---------------------|------|---------|
@@ -238,6 +242,7 @@ This project was very much a WIP/Proof of concept so there are a lot of features
 - Im not sure if ASP.NET is the best choice for the API. It does the job but there might be more lightweight options out there
 - Improved validation of inputs from the API. Especially things like the updating settings API
 - The sample rate currently just implements a 'record everything and take every n-th sample` approach. I know the SNSR dll has a Decimate function that is probably the correct way to implement this but wasn't sure on how its implemented exactly.
+- There was an intention to include the upload of files to some cloud storage of your choice. This should be pretty straightforward to implement, especially with the AWS IOT SDK, which you can use the IoT device certificates for authentication instead of having to store AWS credentials on each device (https://aws.amazon.com/blogs/security/how-to-eliminate-the-need-for-hardcoded-aws-credentials-in-devices-by-using-the-aws-iot-credentials-provider/)
 
 ## Terminology
 
